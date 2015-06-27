@@ -1,0 +1,79 @@
+               SParse Optimization Research COde (SPORCO)
+
+                      Version 0.0.1   2015-05-09
+
+                 Brendt Wohlberg  <brendt@lanl.gov>
+
+Description
+-----------
+
+This Matlab library provides functions for sparse coding and
+dictionary learning, together with miscellaneous support functions for
+signal and image processing with sparse representations. The sparse
+coding algorithms are based on the ADMM framework (see
+boyd-2010-distributed listed in references.bib for a detailed review
+and tutorial). While similar codes for some of these functions can be
+found elsewhere, those provided here include enhancements that are not
+present in other publicly available codes. The most significant
+contribution of this library is the inclusion of implementations of
+recent efficient algorithms for convolutional sparse coding and
+dictionary learning (see wohlberg-2014-efficient listed in
+references.bib) that are not available in other Matlab libraries.
+
+Usage
+-----
+
+Before using the library, set the Matlab path to include the library
+root path and then run the "sporco" script to set up paths to relevant
+subdirectories.
+
+Documentation for each function is provided in the function headers,
+accessible via the Matlab "help" command. Citations to the research
+literature are made using a bibtex cite key, the corresponding bibtex
+entries for which may be found in the file references.bib.
+
+Usage examples for each of the main sparse coding and dictionary
+learning functions may be found in the "Demo" directory. The "sporco"
+library initialisation script also adds "Demo" to the path, so these
+scripts may be run simply by entering the script filename. Some of these
+scripts depend on standard test images which are not distributed with
+the library, but which may be downloaded and installed in the correct
+location by running the bash script "getdata.sh" in the "Data"
+directory. (The script will only function in a Unix environment;
+Windows users will have to manually download the required files by
+inspecting the image URLs in the script.)
+
+
+Citing
+------
+
+If you use this library for published work, please cite it as (see
+bibtex entry wohlberg-2015-sporco):
+
+  B. Wohlberg, "SParse Optimization Research COde (SPORCO)", Matlab library 
+  available from http://math.lanl.gov/~brendt/Software/SPORCO/ , 
+  Version 0.0.1, 2015.
+
+If you make use of any of the convolutional sparse representation
+functions, please also cite (see bibtex entry wohlberg-2014-efficient):
+
+  B. Wohlberg, "Efficient Convolutional Sparse Coding", in Proceedings
+  of IEEE International Conference on Acoustics, Speech, and Signal
+  Processing (ICASSP), (Florence, Italy),
+  doi:10.1109/ICASSP.2014.6854992, pp. 7173-7177, May 2014
+
+
+Contact
+-------
+
+Please submit bug reports, comments, etc. to brendt@lanl.gov.
+
+
+License
+-------
+
+This library was developed at Los Alamos National Laboratory, and has
+been approved for public release under the approval number
+LA-CC-14-057. It is made available under the terms of version 2.0 of
+the GNU General Public License; please see the Copyright and License
+files for further details.
