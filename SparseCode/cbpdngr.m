@@ -215,11 +215,11 @@ while k <= opt.MaxMainIter & (r > epri | s > edua),
   if opt.AuxVarObj,
     Yf = fft2(Y); % This represents unnecessary computational cost
     Jdf = sum(vec(abs(sum(bsxfun(@times,Df,Yf),3)-Sf).^2))/(2*xsz(1)*xsz(2));
-    Jl1 = sum(abs(vec(opt.L1Weight .* Y)));
+    Jl1 = sum(abs(vec(bsxfun(@times, opt.L1Weight,Y))));
     Jgr = sum(vec((bsxfun(@times, GfW, conj(Yf).*Yf))))/(2*xsz(1)*xsz(2));
   else
     Jdf = sum(vec(abs(sum(bsxfun(@times,Df,Xf),3)-Sf).^2))/(2*xsz(1)*xsz(2));
-    Jl1 = sum(abs(vec(opt.L1Weight .* X)));
+    Jl1 = sum(abs(vec(bsxfun(@times, opt.L1Weight,Y))));
     Jgr = sum(vec((bsxfun(@times, GfW, conj(Xf).*Xf))))/(2*xsz(1)*xsz(2));
   end
   Jfn = Jdf + lambda*Jl1 + mu*Jgr;
@@ -306,7 +306,7 @@ return
 
 function u = shrink(v, lambda)
 
-  u = sign(v).*max(0, abs(v) - lambda);
+  u = sign(v).*max(0, bsxfun(@minus,abs(v), lambda));
 
 return
 
