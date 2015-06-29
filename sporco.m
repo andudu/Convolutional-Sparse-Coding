@@ -5,7 +5,7 @@
 sporco_p0 = which('sporco');
 sporco_K = strfind(sporco_p0, '/');
 sporco_p1 = sporco_p0(1:sporco_K(end)-1);
-sporco_sd = {'.', 'Demo', 'DictLearn', 'SparseCode', 'Util','Denoising',...
+sporco_sd = {'.', 'Demo', 'DictLearn', 'SparseCode', 'Util',...
     'Nofilter'};
 for sporco_k=1:length(sporco_sd),
   addpath([sporco_p1 '/' sporco_sd{sporco_k}]);
