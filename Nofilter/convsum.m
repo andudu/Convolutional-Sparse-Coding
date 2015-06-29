@@ -1,4 +1,4 @@
-function Y = convsum(X,D,ind)
+function Y = convsum(D,X,ind)
 %find the partial convolutional sum correspondint to ind
 Y = zeros(size(X,1),size(X,2));
 for i = ind
