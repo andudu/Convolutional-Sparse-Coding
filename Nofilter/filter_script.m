@@ -25,7 +25,7 @@ fltlmbd = 5;
 
 
 
-mu_all = 1:0.5:4;
+mu_all = 0.01:0.01:0.06;
 
 
 %setting up parameters
@@ -39,7 +39,7 @@ opt.AuxVarObj = 0;
 opt.HighMemSolve = 1;
 opt.L1Weight = 1;
 [X1, optinf1] = cbpdn(D, sh, lambda, opt);
-save(strcat(sporco_path,'/Results/benchmark_',imagename,'.mat'),'X1','optinf1');
+%save(strcat(sporco_path,'/Results/benchmark_',imagename,'.mat'),'X1','optinf1');
 H1 = scnv(D,X1);
 DX1 = H1+sl;
 res1 = snr(s,DX1);
@@ -49,11 +49,11 @@ for iter = 1:length(mu_all)
 
 % Compute representation using cbpdngr with no pass but high regularizer
 mu = mu_all(iter);
-opt.L1Weight = reshape([ones(1,num_dict-1),.8],1,1,num_dict);
-opt.GrdWeight = reshape([zeros(1,num_dict-1),5],1,1,num_dict);
-[X2, optinf2] = cbpdngr(D, s, lambda, mu, opt);
+opt.L1Weight = reshape([ones(1,num_dict-1),.8],1,1,num_dict); %try few sparsity .9 for new_grd
+opt.GrdWeight = reshape([zeros(1,num_dict-1),1],1,1,num_dict); %5 on coeff 1 for final
+[X2, optinf2] = cbpdngr_new(D, s, lambda, mu, opt);
 
-save(strcat(sporco_path,'/Results/grdx_',imagename,num2str(iter),'.mat'),'X2','optinf2');
+save(strcat(sporco_path,'/Results/Raw/new_grdx_',imagename,num2str(iter),'.mat'),'X2','optinf2');
 
 %plot reconstruction 
 DX2 = scnv(D,X2);
@@ -65,7 +65,7 @@ title(strcat('lambda = ',num2str(lambda),'  snr = ',num2str(res1)));
 subplot(1,2,2);
 imagesc(DX2); colormap (gray); axis off;
 title(strcat('mu = ',num2str(mu),'  snr = ',num2str(res2)));
-saveas(gcf,strcat(sporco_path,'/Results/full_rec_',imagename,num2str(iter)),'png');
+saveas(gcf,strcat(sporco_path,'/Results/newgrd_full_rec_',imagename,num2str(iter)),'png');
 
 
 %plot high freq rec
@@ -77,7 +77,7 @@ title(strcat('lambda = ',num2str(lambda)));
 subplot(1,2,2);
 imagesc(diff_2); colormap (gray); axis off;
 title(strcat('mu = ',num2str(mu)));
-saveas(gcf,strcat(sporco_path,'/Results/High_rec_',imagename,num2str(iter)),'png');
+saveas(gcf,strcat(sporco_path,'/Results/newgrd_High_rec_',imagename,num2str(iter)),'png');
 
 
 %plot low freq 
@@ -89,7 +89,7 @@ title(strcat('lambda = ',num2str(lambda)));
 subplot(1,2,2);
 imagesc(L2); colormap (gray); axis off;
 title(strcat('mu = ',num2str(mu)));
-saveas(gcf,strcat(sporco_path,'/Results/Low_rec_',imagename,num2str(iter)),'png');
+saveas(gcf,strcat(sporco_path,'/Results/newgrd_Low_rec_',imagename,num2str(iter)),'png');
 
 %plot difference
 diff_2 = s-DX2;
@@ -100,7 +100,7 @@ title(strcat('lambda = ',num2str(lambda)));
 subplot(1,2,2);
 imagesc(diff_2);  axis off;
 title(strcat('mu = ',num2str(mu)));
-saveas(gcf,strcat(sporco_path,'/Results/Diff_rec_',imagename,num2str(iter)),'png');
+saveas(gcf,strcat(sporco_path,'/Results/newgrd_Diff_rec_',imagename,num2str(iter)),'png');
 
 
 end
