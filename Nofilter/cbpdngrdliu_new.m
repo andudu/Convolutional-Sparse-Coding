@@ -1,4 +1,6 @@
-function [D, Y, optinf] = cbpdndliu(D0, S, lambda, opt)
+function [D, Y, optinf] = cbpdngrdliu_new(D0, S, mu, lambda, opt)
+
+%%%Very Unfinished!!%%%%%%%%%%%%%%%%%
 
 % cbpdndliu -- Convolutional BPDN Dictionary Learning (Interleaved Update)
 %
@@ -25,8 +27,7 @@ function [D, Y, optinf] = cbpdndliu(D0, S, lambda, opt)
 %
 %
 % Options structure fields:
-%   Verbose          Flag determining whether iteration status is
-%   displayed.
+%   Verbose          Flag determining whether iteration status is displayed.
 %                    Fields are iteration number, functional value,
 %                    data fidelity term, l1 regularisation term, and
 %                    primal and dual residuals (see Sec. 3.3 of
@@ -92,14 +93,14 @@ function [D, Y, optinf] = cbpdndliu(D0, S, lambda, opt)
 % distributed with the library.
 
 
-if nargin < 4,
+if nargin < 5,
   opt = [];
 end
 checkopt(opt, defaultopts([]));
 opt = defaultopts(opt);
 
 % Set up status display for verbose operation
-hstr = ['Itn   Fnc       DFid      l1        Cnstr     '...
+hstr = ['Itn   Fnc       DFid      l1        Grd     '...
         'r(X)      s(X)      r(D)      s(D) '];
 sfms = '%4d %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e';
 nsep = 84;
@@ -163,6 +164,23 @@ if opt.ZeroMean,
 else
   Pcn = @(x) Pnrm(Pzp(PzpT(x)));
 end
+
+
+%compute gradient transform matrix
+grv = [-1 1];
+Grf = fft2(grv, size(S,1), size(S,2));
+gcv = [-1 1]';
+Gcf = fft2(gcv, size(S,1), size(S,2));
+if isscalar(opt.GrdWeight),
+  opt.GrdWeight = opt.GrdWeight * ones(size(D,3), 1);
+end
+wgr = reshape(opt.GrdWeight, [1 1 length(opt.GrdWeight)]);
+GfW = bsxfun(@times, conj(Grf).*Grf + conj(Gcf).*Gcf, wgr);
+
+%you will need more than 1 line.  in the dictionary update. 
+DoDT = bsxfun(@times,conj(Df),Df);
+GfW = bsxfun(@times,DoDT,GfW);
+
 
 % Start timer
 tstart = tic;
@@ -241,7 +259,7 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
   % DFT is already available) to solve for X using the main dictionary
   % variable D as the dictionary, but this appears to be unstable. Instead,
   % use the projected dictionary variable G
-  Xf = solvedbi_sm(Gf, rho, GSf + rho*fft2(Y - U));
+  Xf = solvedbd_sm(Gf, mu*GfW + rho, GSf + rho*fft2(Y - U));
   X = ifft2(Xf, 'symmetric');
   clear Xf Gf GSf;
 
@@ -283,7 +301,7 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
   clear X;
 
   % Compute l1 norm of Y
-  Jl1 = sum(abs(vec(opt.L1Weight .* Y)));
+  Jl1 = sum(abs(vec(bsxfun(@times,opt.L1Weight , Y))));
 
   % Update record of previous step Y
   Yprv = Y;
@@ -339,8 +357,7 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
     cgt = rd/opt.CGTolFactor;
   end
 
-  % Compute measure of D constraint violation
-  Jcn = norm(vec(Pcn(D) - D));
+  %compute gradient term
   clear D;
 
   % Update record of previous step G
@@ -348,9 +365,10 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
 
 
   % Compute data fidelity term in Fourier domain (note normalisation)
+  Jgr = sum(vec((bsxfun(@times, GfW, conj(Yf).*Yf))))/(2*xsz(1)*xsz(2));
   Jdf = sum(vec(abs(sum(bsxfun(@times,Gf,Yf),3)-Sf).^2))/(2*xsz(1)*xsz(2));
   clear Yf;
-  Jfn = Jdf + lambda*Jl1;
+  Jfn = Jdf + lambda*Jl1+mu*Jgr;
 
 
   % Record and display iteration details
@@ -358,7 +376,7 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
   optinf.itstat = [optinf.itstat;...
        [k Jfn Jdf Jl1 rx sx rd sd eprix eduax eprid eduad rho sigma tk]];
   if opt.Verbose,
-    dvc = [k, Jfn, Jdf, Jl1, Jcn, rx, sx, rd, sd];
+    dvc = [k, Jfn, Jdf, lambda*Jl1, mu*Jgr, rx, sx, rd, sd];
     if opt.AutoRho,
       dvc = [dvc rho];
     end
@@ -437,7 +455,7 @@ return
 
 function u = shrink(v, lambda)
 
-  u = sign(v).*max(0, abs(v) - lambda);
+  u = sign(v).*max(0, bsxfun(@minus,abs(v), lambda));
 
 return
 

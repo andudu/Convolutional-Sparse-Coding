@@ -14,7 +14,7 @@ D = dmap('12x12x36');
 
 
 % Load test image
-s = single(rgbtogrey(stdimage('barbara')))/255;
+s = single(rgbtogrey(stdimage('lena')))/255;
 if isempty(s),
   error('Data required for demo scripts has not been installed.');
 end
@@ -22,13 +22,15 @@ end
 % Highpass filter test image
 npd = 16;
 fltlmbd = 5;
-%sl = zeros(size(sh));
-%sh = s;
-[sl, sh] = lowpass(s, fltlmbd, npd);
+
+%zero pass
+sl = zeros(size(s));
+sh = s;
+%[sl, sh] = lowpass(s, fltlmbd, npd);
 
 % Compute representation
 lambda = 0.01;
-opt = [];
+opt = {};
 opt.Verbose = 1;
 opt.MaxMainIter = 500;
 opt.rho = 100*lambda + 1;
