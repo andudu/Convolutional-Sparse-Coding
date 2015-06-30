@@ -23,7 +23,7 @@ D = padarray(D,[npad,npad],'post');
 
 % %add point source
 pixsz = 2;
-D_point = ones(pixsz,pixsz);
+D_point = ones(2,2);
 D_point = padarray(D_point,[gsz-pixsz,gsz-pixsz],'post');
 D(:,:,num_dict) = D_point;
 
@@ -59,7 +59,7 @@ fltlmbd = 5;
 
 lambda = .3; % best lambda from parameter search
 mu_all = 1.4;
-w_all = 0.6;
+w_all = 0.8;
 
 opt = [];
 opt.Verbose = 1;

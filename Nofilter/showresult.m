@@ -37,8 +37,8 @@ square_plot(temp,plot_opt);
 %plotting the distribution of coefficient.
 coeff = reshape(sum(sum(abs(X),1),2),1,size(X,3));
 figure;
-plot(1:1:size(X,3),coeff);
-title('distribution of coeff sum');
+plot(1:1:size(X,3),log(coeff));
+title('distribution of log coeff sum');
 
 
 

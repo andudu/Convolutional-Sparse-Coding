@@ -4,7 +4,7 @@
 % Load a standard dictionary
 load([sporco_path '/Data/ConvDict.mat']);
 dmap = containers.Map(ConvDict.Label, ConvDict.Dict);
-D = dmap('12x12x36');
+D = dmap('8x8x32');
 num_dict = size(D,3);
 
 imagename = 'lena';

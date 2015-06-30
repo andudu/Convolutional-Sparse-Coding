@@ -84,7 +84,7 @@ checkopt(opt, defaultopts({}));
 opt = defaultopts(opt);
 
 % Set up status display for verbose operation
-hstr = 'Itn   Fnc       DFid      lam*l1        Grd        r         s      ';
+hstr = 'Itn   Fnc       DFid      lam*l1        mu*Grd        r         s      ';
 sfms = '%4d %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e';
 nsep = 64;
 if opt.AutoRho,
