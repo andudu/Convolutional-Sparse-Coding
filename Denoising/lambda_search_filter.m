@@ -4,13 +4,14 @@
 % Load a standard dictionary
 load([sporco_path '/Data/ConvDict.mat']);
 dmap = containers.Map(ConvDict.Label, ConvDict.Dict);
-D = dmap('12x12x36');
+D = dmap('8x8x32');
 num_dict = size(D,3);
 
 imagename = 'lena';
 
 % Load test image
 s = single(rgbtogrey(stdimage(imagename)))/255; %use barbara or lena here
+s = imresize(s, 0.5);
 s_ref = s;
 %add the noise (10 percent peak signal)
 sigma = .1;
@@ -28,7 +29,7 @@ npd = 16;
 fltlmbd = 5;
 [sl, sh] = lowpass(s, fltlmbd, npd);
 
-lambda_all = 0.01:0.02:0.55;
+lambda_all = 0.2;
 snr_all = zeros(size(lambda_all));
 psnr_all = zeros(size(lambda_all));
 X_max = [];
@@ -42,7 +43,7 @@ for iter = 1:length(lambda_all)
 disp(['iter: ',num2str(iter)]);
 lambda = lambda_all(iter);
 opt = [];
-opt.Verbose = 0;
+opt.Verbose = 1;
 opt.MaxMainIter = 400;
 opt.rho = 100*lambda + 1;
 opt.RelStopTol = 1e-3;
@@ -69,14 +70,16 @@ end
 end
 
 %save the info for the max point
-save(strcat(sporco_path,'/Results/Denoising/Raw/lambda_search_filter_',...
-    imagename,'.mat'),'X_max','optinf_max','psnr_all','psnr_max'...
-    ,'lambda_all','lambda_max','snr_all');
+% save(strcat(sporco_path,'/Results/Denoising/Raw/lambda_search_filter_',...
+%     imagename,'.mat'),'X_max','optinf_max','psnr_all','psnr_max'...
+%     ,'lambda_all','lambda_max','snr_all');
 
 %plot and save the best reconstruction
 H_max = scnv(D,X_max);
 DX_max = H_max+sl;
 diff_max = DX_max - s_ref;
+figure;
+imagesc(H_max); colormap(gray);
 
 figure;
 subplot(1,2,1);

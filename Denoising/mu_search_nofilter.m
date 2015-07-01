@@ -7,10 +7,12 @@ dmap = containers.Map(ConvDict.Label, ConvDict.Dict);
 D = dmap('8x8x32');
 num_dict = size(D,3);
 
+tag = 'gauss' ;%pointsource
+
 
 %resize
 fsz = size(D,1);
-gsz = 30;
+gsz = 40;
 npad = gsz - fsz;
 D = padarray(D,[npad,npad],'post');
 
@@ -18,14 +20,14 @@ D = padarray(D,[npad,npad],'post');
 
 
 % %add this gaussian
-% D(:,:,num_dict) = gauss2d(gsz,4);
+D(:,:,num_dict) = gauss2d(gsz,10);
 
 
 % %add point source
-pixsz = 2;
-D_point = ones(pixsz,pixsz);
-D_point = padarray(D_point,[gsz-pixsz,gsz-pixsz],'post');
-D(:,:,num_dict) = D_point;
+% pixsz = 1;
+% D_point = ones(pixsz,pixsz);
+% D_point = padarray(D_point,[gsz-pixsz,gsz-pixsz],'post');
+% D(:,:,num_dict) = D_point;
 
 %normalize
 D(:,:,num_dict) = D(:,:,num_dict)/norm(vec(D(:,:,num_dict)));
@@ -57,13 +59,11 @@ fltlmbd = 5;
 [sl, sh] = lowpass(s, fltlmbd, npd);
 
 
-lambda = .3; % best lambda from parameter search
-mu_all = 1.4;
-w_all = 0.6;
+lambda = .2; % best lambda from parameter search
 
 opt = [];
 opt.Verbose = 1;
-opt.MaxMainIter = 500;
+opt.MaxMainIter = 400;
 opt.rho = 100*lambda + 1;
 opt.RelStopTol = 1e-3;
 opt.AuxVarObj = 0;
@@ -84,8 +84,9 @@ opt.GrdWeight = reshape([zeros(1,num_dict-1),1],1,1,num_dict);
 
 
 
-%  mu_all = [0.3,0.5,1,5];
-%  w_all = [0.7,0.8,0.9,0.95];
+mu_all = 2.0;
+
+w_all =0.009;
 
 
 
@@ -95,6 +96,7 @@ psnr_all_grim = zeros(length(mu_all),length(w_all));
 psnr_all_grcoef = zeros(length(mu_all),length(w_all));
 X_max_grim = [];
 mu_max_grim = 0;
+w_max_grim = 0;
 mu_max_grcoef = 0;
 psnr_max_grim = 0;
 psnr_max_grcoef = 0;
@@ -141,7 +143,8 @@ for iter = 1:length(mu_all)
         
         if(psnr_all_grim(iter,iter2)> psnr_max_grim)
             psnr_max_grim = psnr_all_grim(iter,iter2);
-            mu_max_grim = mu_all(iter,iter2);
+            mu_max_grim = mu_all(iter);
+            w_max_grim = w_all(iter2);
             X_max_grim = X_grim;
         end
         figure;
@@ -154,14 +157,14 @@ for iter = 1:length(mu_all)
         subplot(1,3,3);
         imagesc(DX_grim); colormap (gray); axis off;
         title(strcat('GrimRec: mu = ',num2str(mu),' w = ',num2str(w),'  psnr = ',num2str(psnr_all_grim(iter,iter2)) ));
-        saveas(gcf,strcat(sporco_path,'/Results/Denoising/grim_',num2str(iter),num2str(iter2),imagename),'png');
+        saveas(gcf,strcat(sporco_path,'/Results/Denoising/grim_',num2str(iter),num2str(iter2),imagename,tag),'png');
         %
     end
 end
 
 %save the info for the max point
 save(strcat(sporco_path,'/Results/Denoising/Raw/mu_search_nofilter_',...
-    imagename,'.mat'),'X_max_grim','psnr_all_grim','psnr_max_grim',...
+    imagename,tag,'.mat'),'X_max_grim','psnr_all_grim','psnr_max_grim',...
     'snr_all_grim'...
     ,'mu_all','mu_max_grim','lambda');
 % save(strcat(sporco_path,'/Results/Denoising/Raw/mu_search_nofilter_',...
@@ -182,7 +185,7 @@ title(strcat('Recon:  mugrim = ',num2str(mu_max_grim),'  psnr = ',num2str(psnr_m
 subplot(1,2,2);
 imagesc(diff_max_grim); colormap (gray); axis off;
 title('Difference');
-saveas(gcf,strcat(sporco_path,'/Results/Denoising/best_mu_search_grim_',imagename),'png');
+saveas(gcf,strcat(sporco_path,'/Results/Denoising/best_mu_search_grim_',imagename,tag),'png');
 
 % %plot and save the best reconstruction(grcoef)
 % DX_max_grcoef = scnv(D,X_max_grcoef);
