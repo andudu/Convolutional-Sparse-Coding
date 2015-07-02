@@ -1,4 +1,4 @@
-function [D, Y, optinf] = cbpdndliugrd(D0, S, mu, lambda, opt)
+function [D, Y, optinf] = cbpdndliu_grd(D0, S, mu, lambda, opt)
 
 % cbpdndliu -- Convolutional BPDN Dictionary Learning (Interleaved Update)
 %
@@ -38,6 +38,7 @@ function [D, Y, optinf] = cbpdndliugrd(D0, S, mu, lambda, opt)
 %   RelStopTol       Relative convergence tolerance (see Sec. 3.3.1 of
 %                    boyd-2010-distributed)
 %   L1Weight         Weight array for L1 norm
+%   DgrdWeight       Weight array for dictionaries 
 %   Y0               Initial value for Y
 %   U0               Initial value for U
 %   G0               Initial value for G (overrides D0 if specified)
@@ -308,14 +309,13 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
   % solve for D using the main coefficient variable X as the coefficients,
   % but it appears to be more stable to use the shrunk coefficient variable Y
   if strcmp(opt.LinSolve, 'SM'),
-    Df = solvemdbd_ism(Yf, sigma+GfW, YSf + sigma*fft2(G - H));
+    Df = solvemdbd_ism(Yf, sigma+mu*GfW, YSf + sigma*fft2(G - H));
   else
-    [Df, cgst] = solvemdbi_cg(Yf, sigma, YSf + sigma*fft2(G - H), ...
+    [Df, cgst] = solvemdbd_cg(Yf, sigma+mu*GfW, YSf + sigma*fft2(G - H), ...
                               cgt, opt.MaxCGIter, Df(:));
   end
   clear YSf;
   D = ifft2(Df, 'symmetric');
-  if strcmp(opt.LinSolve, 'SM'), clear Df; end
 
   % See pg. 21 of boyd-2010-distributed
   if opt.DRelaxParam == 1,
@@ -362,10 +362,10 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
 
 
   % Compute data fidelity term in Fourier domain (note normalisation)
-  Jgr = sum(vec((bsxfun(@times, GfW, conj(Yf).*Yf))))/(2*xsz(1)*xsz(2));
+  Dgr = sum(vec((bsxfun(@times, mu*GfW, conj(Df).*Df))))/(2*xsz(1)*xsz(2));
   Jdf = sum(vec(abs(sum(bsxfun(@times,Gf,Yf),3)-Sf).^2))/(2*xsz(1)*xsz(2));
   clear Yf;
-  Jfn = Jdf + lambda*Jl1+mu*Jgr;
+  Jfn = Jdf + lambda*Jl1;
 
 
   % Record and display iteration details
@@ -502,6 +502,9 @@ function opt = defaultopts(opt)
   end
   if ~isfield(opt,'L1Weight'),
     opt.L1Weight = 1;
+  end
+  if ~isfield(opt,'DgrdWeight'),
+    opt.DgrdWeight = 1;
   end
   if ~isfield(opt,'Y0'),
     opt.Y0 = [];

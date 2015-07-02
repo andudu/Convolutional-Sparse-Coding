@@ -242,6 +242,7 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
   % variable D as the dictionary, but this appears to be unstable. Instead,
   % use the projected dictionary variable G
   Xf = solvedbi_sm(Gf, rho, GSf + rho*fft2(Y - U));
+  foofoo = solvedbd_sm
   X = ifft2(Xf, 'symmetric');
   clear Xf Gf GSf;
 
@@ -294,7 +295,6 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
   % but it appears to be more stable to use the shrunk coefficient variable Y
   if strcmp(opt.LinSolve, 'SM'),
     Df = solvemdbi_ism(Yf, sigma, YSf + sigma*fft2(G - H));
-    Df_foo = solvemdbd_ism(Yf, sigma*ones(1,1,size(Df,3)), YSf + sigma*fft2(G - H));   
   else
     [Df, cgst] = solvemdbi_cg(Yf, sigma, YSf + sigma*fft2(G - H), ...
                               cgt, opt.MaxCGIter, Df(:));

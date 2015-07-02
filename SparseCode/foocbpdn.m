@@ -254,6 +254,11 @@ while k <= opt.MaxMainIter & (r > epri | s > edua),
 
   Yprv = Y;
   k = k + 1;
+  figure;
+  rec = convsum(D,Y,1:1:size(D,3));
+  image(100*(rec+0.3278));
+  title(strcat('iter ',num2str(k)));
+  saveas(gcf,strcat('/nh/u/mathluo/Convolutional-Sparse-Coding/Results/foo/',num2str(k)),'png');
 
 end
 

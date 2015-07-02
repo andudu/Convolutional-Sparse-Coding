@@ -1,4 +1,4 @@
-function [D, Y, optinf] = cbpdndliu(D0, S, lambda, opt)
+function [D, Y, optinf] = cbpdndliu_grd(D0, S, mu, lambda, opt)
 
 % cbpdndliu -- Convolutional BPDN Dictionary Learning (Interleaved Update)
 %
@@ -25,8 +25,7 @@ function [D, Y, optinf] = cbpdndliu(D0, S, lambda, opt)
 %
 %
 % Options structure fields:
-%   Verbose          Flag determining whether iteration status is
-%   displayed.
+%   Verbose          Flag determining whether iteration status is displayed.
 %                    Fields are iteration number, functional value,
 %                    data fidelity term, l1 regularisation term, and
 %                    primal and dual residuals (see Sec. 3.3 of
@@ -39,6 +38,7 @@ function [D, Y, optinf] = cbpdndliu(D0, S, lambda, opt)
 %   RelStopTol       Relative convergence tolerance (see Sec. 3.3.1 of
 %                    boyd-2010-distributed)
 %   L1Weight         Weight array for L1 norm
+%   DgrdWeight       Weight array for dictionaries 
 %   Y0               Initial value for Y
 %   U0               Initial value for U
 %   G0               Initial value for G (overrides D0 if specified)
@@ -92,14 +92,14 @@ function [D, Y, optinf] = cbpdndliu(D0, S, lambda, opt)
 % distributed with the library.
 
 
-if nargin < 4,
-  opt = [];
+if nargin < 5,
+ opt.foo = 0;
 end
-checkopt(opt, defaultopts([]));
+checkopt(opt, defaultopts({}));
 opt = defaultopts(opt);
 
 % Set up status display for verbose operation
-hstr = ['Itn   Fnc       DFid      l1        Cnstr     '...
+hstr = ['Itn   Fnc       DFid      l1        Grd     '...
         'r(X)      s(X)      r(D)      s(D) '];
 sfms = '%4d %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e';
 nsep = 84;
@@ -163,6 +163,20 @@ if opt.ZeroMean,
 else
   Pcn = @(x) Pnrm(Pzp(PzpT(x)));
 end
+
+
+%compute gradient transform matrix
+grv = [-1 1];
+Grf = fft2(grv, size(S,1), size(S,2));
+gcv = [-1 1]';
+Gcf = fft2(gcv, size(S,1), size(S,2));
+if isscalar(opt.DgrdWeight),
+  opt.DgrdWeight = opt.DgrdWeight * ones(size(D,3), 1);
+end
+wgr = reshape(opt.GrdWeight, [1 1 length(opt.GrdWeight)]);
+GfW = bsxfun(@times, conj(Grf).*Grf + conj(Gcf).*Gcf, wgr);
+
+
 
 % Start timer
 tstart = tic;
@@ -241,6 +255,8 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
   % DFT is already available) to solve for X using the main dictionary
   % variable D as the dictionary, but this appears to be unstable. Instead,
   % use the projected dictionary variable G
+  
+  %Xf = solvedbd_sm(Gf, mu*GfW + rho, GSf + rho*fft2(Y - U));
   Xf = solvedbi_sm(Gf, rho, GSf + rho*fft2(Y - U));
   X = ifft2(Xf, 'symmetric');
   clear Xf Gf GSf;
@@ -283,7 +299,7 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
   clear X;
 
   % Compute l1 norm of Y
-  Jl1 = sum(abs(vec(opt.L1Weight .* Y)));
+  Jl1 = sum(abs(vec(bsxfun(@times,opt.L1Weight , Y))));
 
   % Update record of previous step Y
   Yprv = Y;
@@ -293,15 +309,13 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
   % solve for D using the main coefficient variable X as the coefficients,
   % but it appears to be more stable to use the shrunk coefficient variable Y
   if strcmp(opt.LinSolve, 'SM'),
-    Df = solvemdbi_ism(Yf, sigma, YSf + sigma*fft2(G - H));
-    Df_foo = solvemdbd_ism(Yf, sigma*ones(1,1,size(Df,3)), YSf + sigma*fft2(G - H));   
+    Df = solvemdbd_ism(Yf, sigma+mu*GfW, YSf + sigma*fft2(G - H));
   else
-    [Df, cgst] = solvemdbi_cg(Yf, sigma, YSf + sigma*fft2(G - H), ...
+    [Df, cgst] = solvemdbd_cg(Yf, sigma+mu*GfW, YSf + sigma*fft2(G - H), ...
                               cgt, opt.MaxCGIter, Df(:));
   end
   clear YSf;
   D = ifft2(Df, 'symmetric');
-  if strcmp(opt.LinSolve, 'SM'), clear Df; end
 
   % See pg. 21 of boyd-2010-distributed
   if opt.DRelaxParam == 1,
@@ -340,8 +354,7 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
     cgt = rd/opt.CGTolFactor;
   end
 
-  % Compute measure of D constraint violation
-  Jcn = norm(vec(Pcn(D) - D));
+  %compute gradient term
   clear D;
 
   % Update record of previous step G
@@ -349,6 +362,7 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
 
 
   % Compute data fidelity term in Fourier domain (note normalisation)
+  Dgr = sum(vec((bsxfun(@times, mu*GfW, conj(Df).*Df))))/(2*xsz(1)*xsz(2));
   Jdf = sum(vec(abs(sum(bsxfun(@times,Gf,Yf),3)-Sf).^2))/(2*xsz(1)*xsz(2));
   clear Yf;
   Jfn = Jdf + lambda*Jl1;
@@ -359,7 +373,7 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
   optinf.itstat = [optinf.itstat;...
        [k Jfn Jdf Jl1 rx sx rd sd eprix eduax eprid eduad rho sigma tk]];
   if opt.Verbose,
-    dvc = [k, Jfn, Jdf, Jl1, Jcn, rx, sx, rd, sd];
+    dvc = [k, Jfn, Jdf, lambda*Jl1, mu*Dgr, rx, sx, rd, sd];
     if opt.AutoRho,
       dvc = [dvc rho];
     end
@@ -438,7 +452,7 @@ return
 
 function u = shrink(v, lambda)
 
-  u = sign(v).*max(0, abs(v) - lambda);
+  u = sign(v).*max(0, bsxfun(@minus,abs(v), lambda));
 
 return
 
@@ -488,6 +502,9 @@ function opt = defaultopts(opt)
   end
   if ~isfield(opt,'L1Weight'),
     opt.L1Weight = 1;
+  end
+  if ~isfield(opt,'DgrdWeight'),
+    opt.DgrdWeight = 1;
   end
   if ~isfield(opt,'Y0'),
     opt.Y0 = [];
@@ -554,6 +571,9 @@ function opt = defaultopts(opt)
   end
   if ~isfield(opt,'CGTol'),
     opt.CGTol = 1e-3;
+  end
+  if ~isfield(opt,'GrdWeight'),
+    opt.GrdWeight = 1;
   end
   if ~isfield(opt,'CGTolAuto'),
     opt.CGTolAuto = 0;
