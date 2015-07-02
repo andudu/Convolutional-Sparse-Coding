@@ -84,9 +84,9 @@ opt.GrdWeight = reshape([zeros(1,num_dict-1),1],1,1,num_dict);
 
 
 
-mu_all = 2.0;
+mu_all = 5;
 
-w_all =0.009;
+w_all =5*10e-5;
 
 
 
@@ -136,8 +136,9 @@ for iter = 1:length(mu_all)
         
         %%%%%%%%%%%%%%%%%%%%%
        
-        [X_grim, ~] = cbpdngr_new(D, s, lambda, mu, opt);
-        DX_grim = scnv(D,X_grim);
+%         [X_grim, ~] = cbpdngr_new(D, s, lambda, mu, opt);
+%         DX_grim = scnv(D,X_grim);
+        [X_grim, Z,~] = cbpdnlc(D, s, lambda, mu, opt);
         snr_all_grim(iter,iter2) = snr(s_ref,DX_grim);
         psnr_all_grim(iter,iter2) = psnr(DX_grim,s_ref);
         

@@ -28,6 +28,7 @@ sl = zeros(size(s));
 sh = s;
 %[sl, sh] = lowpass(s, fltlmbd, npd);
 
+
 % Compute representation
 lambda = 0.01;
 opt = {};
