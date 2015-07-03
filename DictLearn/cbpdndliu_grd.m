@@ -173,7 +173,7 @@ Gcf = fft2(gcv, size(S,1), size(S,2));
 if isscalar(opt.DgrdWeight),
   opt.DgrdWeight = opt.DgrdWeight * ones(size(D,3), 1);
 end
-wgr = reshape(opt.GrdWeight, [1 1 length(opt.GrdWeight)]);
+wgr = reshape(opt.DgrdWeight, [1 1 length(opt.DgrdWeight)]);
 GfW = bsxfun(@times, conj(Grf).*Grf + conj(Gcf).*Gcf, wgr);
 
 
@@ -504,7 +504,7 @@ function opt = defaultopts(opt)
     opt.L1Weight = 1;
   end
   if ~isfield(opt,'DgrdWeight'),
-    opt.DgrdWeight = 1;
+    opt.DgrdWeight = 0;
   end
   if ~isfield(opt,'Y0'),
     opt.Y0 = [];

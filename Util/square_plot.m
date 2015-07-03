@@ -20,8 +20,14 @@ if~isfield(opt,'sparse'),
     if ~isfield(opt,'grey'),
         opt.grey = 0;
     end
+    if ~isfield(opt,'unifscale'),
+        opt.unifscale = 0;
+    end
 end
-
+    if ~isfield(opt,'axis'),
+        opt.axis = 1;
+    end
+    
 
 
 for i = 0:k-1
@@ -29,20 +35,25 @@ for i = 0:k-1
         ind = i*k+j;
         if ind <= p,
             subplot(k,k,ind);
+            if ~opt.axis
+                axis off;
+            end
             if ~opt.sparse
-                if ~opt.grey
-                    imagesc(D(:,:,ind));
-                    axis off;
+                if opt.unifscale,
+                    m1 = max(vec(D));
+                    m2 = min(vec(D));
+                    image((D(:,:,ind)-m2)*64/(m1-m2));
                 else
                     imagesc(D(:,:,ind));
-                    colormap(gray);
-                    axis off;
+                end
+                if opt.grey
+                   colormap(gray);
                 end
             else
                 spy(D(:,:,ind));
-                axis off;
             end
         end
     end
 end
+
 
