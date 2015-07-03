@@ -1,4 +1,4 @@
-function square_plot(D,opt)
+function hdl = square_plot(D,opt)
 
 % D is m*n*p size dictionary
 % opt is options
@@ -10,7 +10,6 @@ p = size(D,3);
 k = ceil(sqrt(p));
 
 figure;
-
 if nargin == 0 ,
     opt = {};
 end
@@ -56,4 +55,4 @@ for i = 0:k-1
     end
 end
 
-
+hdl = gcf;

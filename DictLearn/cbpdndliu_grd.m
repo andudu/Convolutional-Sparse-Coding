@@ -1,9 +1,12 @@
-function [D, Y, optinf] = cbpdndliu_grd(D0, S, mu, lambda, opt)
+function [D, Y, optinf] = cbpdndliu_grd(D0, S,mu1,mu2, lambda, opt)
 
 % cbpdndliu -- Convolutional BPDN Dictionary Learning (Interleaved Update)
 %
-%         argmin_{x_k,d_k} (1/2)||\sum_k h_k * x_k - s||_2^2 +
-%                           lambda \sum_k ||x_k||_1
+%         argmin_{x_k,d_k} (1/2)||\sum_k d_k * x_k - s||_2^2 +
+%                           lambda \sum_k L1Weight.||x_k||_1 +
+%                           mu1 \sum_k DgrdWeight.||Grad D_k||_2^2 + 
+%                           m2 \sum_k XgrdWeight.||Grad D_k*X_k||_2^2 +
+%                         (or mu m2 \sum_k XgrdWeight.||Grad X_k||_2^2 )
 %
 %         The solution is computed using Augmented Lagrangian methods
 %         (see boyd-2010-distributed) with efficient solution of the 
@@ -15,8 +18,10 @@ function [D, Y, optinf] = cbpdndliu_grd(D0, S, mu, lambda, opt)
 % Input:
 %       D0          Initial dictionary
 %       S           Input images
-%       lambda      Regularization parameter
+%       lambda      Regularization parameter-Sparsity
 %       opt         Options/algorithm parameters structure (see below)
+%       mu1         Regularization parameter-Dictionary
+%       mu2         Regularization parameter-Coefficients
 %
 % Output:
 %       D           Dictionary filter set (3D array)
@@ -33,12 +38,15 @@ function [D, Y, optinf] = cbpdndliu_grd(D0, S, mu, lambda, opt)
 %                    are also displayed if options request that they are
 %                    automatically adjusted.
 %   MaxMainIter      Maximum main iterations
+%   GrCoef           Flag for whether to apply gradient on coefficient or
+%                    image. 1 for applying on coeff
 %   AbsStopTol       Absolute convergence tolerance (see Sec. 3.3.1 of
 %                    boyd-2010-distributed)
 %   RelStopTol       Relative convergence tolerance (see Sec. 3.3.1 of
 %                    boyd-2010-distributed)
 %   L1Weight         Weight array for L1 norm
 %   DgrdWeight       Weight array for dictionaries 
+%   XgrdWeight       Weight array for coefficients 
 %   Y0               Initial value for Y
 %   U0               Initial value for U
 %   G0               Initial value for G (overrides D0 if specified)
@@ -92,17 +100,17 @@ function [D, Y, optinf] = cbpdndliu_grd(D0, S, mu, lambda, opt)
 % distributed with the library.
 
 
-if nargin < 5,
+if nargin < 6,
  opt.foo = 0;
 end
 checkopt(opt, defaultopts({}));
 opt = defaultopts(opt);
 
 % Set up status display for verbose operation
-hstr = ['Itn   Fnc       DFid      l1        Grd     '...
-        'r(X)      s(X)      r(D)      s(D) '];
-sfms = '%4d %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e';
-nsep = 84;
+hstr = ['Itn   Fnc       DFid      l1         '...
+        'r(X)      s(X)      r(D)      s(D)      muDgr      muXgr'];
+sfms = '%4d %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e';
+nsep = 93;
 if opt.AutoRho,
   hstr = [hstr '     rho  '];
   sfms = [sfms ' %9.2e'];
@@ -173,9 +181,10 @@ Gcf = fft2(gcv, size(S,1), size(S,2));
 if isscalar(opt.DgrdWeight),
   opt.DgrdWeight = opt.DgrdWeight * ones(size(D,3), 1);
 end
-wgr = reshape(opt.DgrdWeight, [1 1 length(opt.DgrdWeight)]);
-GfW = bsxfun(@times, conj(Grf).*Grf + conj(Gcf).*Gcf, wgr);
-
+Dwgr = reshape(opt.DgrdWeight, [1 1 length(opt.DgrdWeight)]);
+Xwgr = reshape(opt.XgrdWeight, [1 1 length(opt.XgrdWeight)]);
+DGfW = bsxfun(@times, conj(Grf).*Grf + conj(Gcf).*Gcf, Dwgr);
+XGfW = bsxfun(@times, conj(Grf).*Grf + conj(Gcf).*Gcf, Xwgr);
 
 
 % Start timer
@@ -255,11 +264,18 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
   % DFT is already available) to solve for X using the main dictionary
   % variable D as the dictionary, but this appears to be unstable. Instead,
   % use the projected dictionary variable G
+
+  if~opt.GrCoef,  %allow different option
+    GrD2 = bsxfun(@times,XGfW,conj(Gf).*Gf); 
+    Xf = solvedbd_sm(Gf, mu2*GrD2 + rho, GSf + rho*fft2(Y - U));
+    clear GrD2;
+    %Xf = solvedbi_sm(Gf, rho, GSf + rho*fft2(Y - U));
+  else
+    Xf = solvedbd_sm(Gf, mu2*XGfW + rho, GSf + rho*fft2(Y - U));      
+  end
   
-  %Xf = solvedbd_sm(Gf, mu*GfW + rho, GSf + rho*fft2(Y - U));
-  Xf = solvedbi_sm(Gf, rho, GSf + rho*fft2(Y - U));
   X = ifft2(Xf, 'symmetric');
-  clear Xf Gf GSf;
+  clear Gf GSf;
 
   % See pg. 21 of boyd-2010-distributed
   if opt.XRelaxParam == 1,
@@ -309,10 +325,20 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
   % solve for D using the main coefficient variable X as the coefficients,
   % but it appears to be more stable to use the shrunk coefficient variable Y
   if strcmp(opt.LinSolve, 'SM'),
-    Df = solvemdbd_ism(Yf, sigma+mu*GfW, YSf + sigma*fft2(G - H));
+      if ~opt.GrCoef,
+          XoXT = bsxfun(@times,conj(Xf),Xf);
+          Sum_GrX2 = sum(bsxfun(@times,XGfW,XoXT),4);
+          Df = solvemdbd_ism(Yf, sigma+mu1*DGfW+mu2*Sum_GrX2, YSf + sigma*fft2(G - H));
+          clear XoXT Xf;
+      else
+          Df = solvemdbd_ism(Yf, sigma+mu1*DGfW, YSf + sigma*fft2(G - H));
+          clear Xf;
+      end      
   else
-    [Df, cgst] = solvemdbd_cg(Yf, sigma+mu*GfW, YSf + sigma*fft2(G - H), ...
-                              cgt, opt.MaxCGIter, Df(:));
+      XoXT = bsxfun(@times,conj(Xf),Xf);
+      Sum_GrX2 = sum(bsxfun(@times,XGfW,XoXT),4);
+      [Df, cgst] = solvemdbd_cg(Yf, sigma+mu1*DGfW+mu2*Sum_GrX2, YSf + sigma*fft2(G - H), ...
+          cgt, opt.MaxCGIter, Df(:));
   end
   clear YSf;
   D = ifft2(Df, 'symmetric');
@@ -362,10 +388,15 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
 
 
   % Compute data fidelity term in Fourier domain (note normalisation)
-  Dgr = sum(vec((bsxfun(@times, mu*GfW, conj(Df).*Df))))/(2*xsz(1)*xsz(2));
+  Dgr = sum(vec((bsxfun(@times, mu1*DGfW, conj(Df).*Df))))/(2*xsz(1)*xsz(2));
+  if ~opt.GrCoef
+    Xgr = sum(vec((bsxfun(@times, mu2*Sum_GrX2, conj(Df).*Df))))/(2*xsz(1)*xsz(2));
+  else
+    Xgr = sum(vec((bsxfun(@times, mu2*XGfW, conj(Df).*Df))))/(2*xsz(1)*xsz(2));      
+  end
   Jdf = sum(vec(abs(sum(bsxfun(@times,Gf,Yf),3)-Sf).^2))/(2*xsz(1)*xsz(2));
-  clear Yf;
-  Jfn = Jdf + lambda*Jl1;
+  clear Yf Sum_GrX2 Df;
+  Jfn = Jdf + lambda*Jl1+Dgr+Xgr;
 
 
   % Record and display iteration details
@@ -373,7 +404,7 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
   optinf.itstat = [optinf.itstat;...
        [k Jfn Jdf Jl1 rx sx rd sd eprix eduax eprid eduad rho sigma tk]];
   if opt.Verbose,
-    dvc = [k, Jfn, Jdf, lambda*Jl1, mu*Dgr, rx, sx, rd, sd];
+    dvc = [k, Jfn, Jdf, lambda*Jl1,rx, sx, rd, sd, Dgr,Xgr];
     if opt.AutoRho,
       dvc = [dvc rho];
     end
@@ -505,6 +536,12 @@ function opt = defaultopts(opt)
   end
   if ~isfield(opt,'DgrdWeight'),
     opt.DgrdWeight = 0;
+  end
+  if ~isfield(opt,'XgrdWeight'),
+    opt.XgrdWeight = 0;
+  end
+  if ~isfield(opt,'GrCoef'),
+    opt.GrCoef = 0;
   end
   if ~isfield(opt,'Y0'),
     opt.Y0 = [];

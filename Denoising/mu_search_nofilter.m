@@ -136,7 +136,7 @@ for iter = 1:length(mu_all)
         
         %%%%%%%%%%%%%%%%%%%%%
        
-%         [X_grim, ~] = cbpdngr_new(D, s, lambda, mu, opt);
+         [X_grim, ~] = cbpdngr_new(D, s, lambda, mu, opt);
 %         DX_grim = scnv(D,X_grim);
         [X_grim, Z,~] = cbpdnlc(D, s, lambda, mu, opt);
         snr_all_grim(iter,iter2) = snr(s_ref,DX_grim);

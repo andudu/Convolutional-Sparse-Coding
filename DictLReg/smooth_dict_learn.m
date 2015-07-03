@@ -32,9 +32,9 @@ fltlmbd = 3.5;
 
 
 % Construct initial dictionary
-num_dict_high = 8; %smaller dictionary
+num_dict_high = 12; %smaller dictionary
+num_dict_mid = 1;
 num_dict_low = 1;
-num_dict_mid = 2;
 num_dict = num_dict_high+num_dict_low+num_dict_mid;
 small_filter_sz = 8;
 mid_filter_sz = 16;
@@ -55,40 +55,46 @@ D0(big_filter_sz/4+1:big_filter_sz/4*3,big_filter_sz/4+1:big_filter_sz/4*3 ...
 
 % Set up cbpdndliu parameters
 lambda = 0.2;
+mu1= 100; %grd on Dict
+mu2 = 0;    %grd on Coef
+wl1 = [1.3,2.2];  
+wgrd = [.45,1];
+
 opt = [];
 opt.Verbose = 1;
-opt.MaxMainIter = 400;
+opt.MaxMainIter = 200;
 opt.rho = 50*lambda + 0.5;
-opt.sigma = size(Sh,3);
+opt.sigma = size(S0,3);
 opt.AutoRho = 1;
-opt.AutoRhoPeriod = 1;
+opt.AutoRhoPeriod = 6;
 opt.AutoSigma = 1;
-opt.AutoSigmaPeriod = 1;
-opt.XRelaxParam = 1.6;
-opt.DRelaxParam = 1.6;
-wl1 = [1.2,1.2,2.5];
-wgrd = [2,2,1];
-mu = 100;
+opt.AutoSigmaPeriod = 6;
+opt.XRelaxParam = 1.3;
+opt.DRelaxParam = 1.3;
+opt.GrCoef = 1;
+
 opt.L1Weight = reshape([ones(1,num_dict_high),wl1],1,1,num_dict);
 opt.DgrdWeight = reshape([zeros(1,num_dict_high),wgrd],1,1,num_dict);
+%opt.XgrdWeight = opt.DgrdWeight;
 opt.DictFilterSizes = [repmat([small_filter_sz;small_filter_sz],1,num_dict_high),...
     repmat([mid_filter_sz;mid_filter_sz],1,num_dict_mid),...
     repmat([big_filter_sz;big_filter_sz],1,num_dict_low)];
 
 % Do dictionary learning
-[D, X, optinf] = cbpdndliu_grd(D0, S0, mu, lambda, opt);
+[D, X, optinf] = cbpdndliu_grd(D0, S0, mu1,mu2, lambda, opt);
 
-
-% Display learned dictionary
-opt1.grey = 1;
-opt1.unifscale = 0;
-square_plot(D,opt1);
 
 % Plot functional value evolution
 figure;
 plot(optinf.itstat(:,2));
 xlabel('Iterations');
 ylabel('Functional value');
+
+% Display learned dictionary
+opt1.grey = 1;
+opt1.unifscale = 0;
+h = cell(1,4);
+h{1} = square_plot(D,opt1);
 
 %plot the "high freq" plus "low freq" for all stuff
 DX = zeros(size(X,1),size(X,2),size(X,4));
@@ -97,16 +103,55 @@ for k = 1:5
 end
 opt1.grey = 1;
 opt1.unifscale = 0;
-square_plot(DX,opt1);
+h{2} = square_plot(DX,opt1);
 
-
+%mid
 DX = zeros(size(X,1),size(X,2),size(X,4));
 for k = 1:5
-    DX(:,:,k) = convsum(D,X(:,:,:,k),num_dict_high+1:num_dict);
+    DX(:,:,k) = convsum(D,X(:,:,:,k),num_dict_high+1:num_dict_high+num_dict_mid);
 end
 opt1.grey = 1;
 opt1.unifscale = 0;
-square_plot(DX,opt1);
+h{3} = square_plot(DX,opt1);
+
+
+
+%low
+DX = zeros(size(X,1),size(X,2),size(X,4));
+for k = 1:5
+    DX(:,:,k) = convsum(D,X(:,:,:,k),num_dict_high+num_dict_mid+1:num_dict);
+end
+opt1.grey = 1;
+opt1.unifscale = 0;
+h{4} = square_plot(DX,opt1);
+
+
+%saving the work
+folder_tag = 'ThreeLayerDict256';
+tag = 'D';
+if ~exist(strcat(sporco_path,'/Results/DictLearn/',folder_tag),'dir')
+    mkdir(strcat(sporco_path,'/Results/DictLearn/',folder_tag));
+end
+name = {'Dict','LowRec','MidRec','HighRec'};
+for i = 1:4
+    saveas(h{i},strcat(sporco_path,'/Results/DictLearn/',folder_tag,'/',...
+        tag,name{i}),'fig');
+end
+
+par.mu1 = mu1;
+par.mu2 = mu2;
+par.lambda = lambda;
+parl.wl1 = wl1;
+par.wgrd = wgrd;
+par.fsize = opt.DictFilterSizes;
+save(strcat(sporco_path,'/Results/DictLearn/',folder_tag,'/Dict',tag,'.mat'),'D','par');
+
+
+
+
+
+
+
 
 
 
