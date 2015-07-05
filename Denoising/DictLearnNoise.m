@@ -3,30 +3,27 @@
 % % Training images from Repository
 crpsz = 256;
 
-%saving the work
-folder_tag = '10Images';
-tag = 'GrD';
-
-
 image_names = { 'airplane.png' ,   'lena.grey.png', 'boats.png' ,'house.png' ,...
     'monarch.png','barbara.grey.png',  'bridge.grey.png',   'kiel.grey.png',...
     'man.grey.png', 'peppers.png', 'goldhill.png',...
     'mandrill.png' };
 %image_num = size(image_names,2);
-% image_index =  [2,6,7,8,9,10,11];
-image_index = [2,6]; %barbara
+image_index =  2;
+%image_index = 2; %barbara
 image_num = length(image_index);
 
 S0 = zeros(crpsz, crpsz, image_num , 'single');
 
 ind = 1;
+%add noise
+sigma = .05;
 for i = image_index
     tmp = stdimage(image_names{i});
     if ndims(tmp) == 3
         tmp = rgb2gray(tmp);
     end
     tmp = imresize(tmp,[crpsz,crpsz]);
-    S0(:,:,ind) = single(tmp)/255.0;
+    S0(:,:,ind) = single(tmp)/255.0+randn(crpsz,crpsz)*sigma;
     ind = ind+1;
 end
 clear tmp tmp1; 
@@ -65,13 +62,13 @@ fltlmbd = 6;
 [Sl, Sh] = lowpass(S0, fltlmbd, npd);
 
 % Construct initial dictionary
-num_dict_high = 5; %smaller dictionary
-num_dict_mid = 5;
-num_dict_low = 5;
+num_dict_high = 7; %smaller dictionary
+num_dict_mid = 1;
+num_dict_low = 1;
 num_dict = num_dict_high+num_dict_low+num_dict_mid;
 small_filter_sz = 8;
-mid_filter_sz = 8;
-big_filter_sz =8;
+mid_filter_sz = 16;
+big_filter_sz =32;
 
 D0 = zeros(big_filter_sz,big_filter_sz,num_dict, 'single');
 
@@ -89,11 +86,11 @@ D0(big_filter_sz/4+1:big_filter_sz/4*3,big_filter_sz/4+1:big_filter_sz/4*3 ...
 ,num_dict_high+num_dict_mid+1:end) = single(repmat(gauss2d(big_filter_sz/2,big_filter_sz/2,big_filter_sz/4),[1,1,num_dict_low]));
 
 % Set up cbpdndliu parameters
-lambda = .1;
-mu1= .03; %grd on Dict
-mu2 = .02;    %grd on Coef
-wl1 = [ones(1,num_dict_mid)-.01,ones(1,num_dict_low)-.02];  
-wgrd = [ones(1,num_dict_mid)*.01,ones(1,num_dict_low)*.02];
+lambda = .25;
+mu1= .7; %grd on Dict
+mu2 = 3;    %grd on Coef
+wl1 = [.3,.4];  
+wgrd = [1,1];
 
 opt = [];
 opt.Verbose = 1;
@@ -106,7 +103,7 @@ opt.AutoSigma = 1;
 opt.AutoSigmaPeriod = 6;
 opt.XRelaxParam = 1.3;
 opt.DRelaxParam = 1.3;
-opt.GrCoef = 0;
+opt.GrCoef = 1;
 
 opt.L1Weight = reshape([ones(1,num_dict_high),wl1],1,1,num_dict);
 opt.DgrdWeight = reshape([zeros(1,num_dict_high),wgrd],1,1,num_dict);
@@ -119,14 +116,14 @@ opt.DictFilterSizes = [repmat([small_filter_sz;small_filter_sz],1,num_dict_high)
 
 %% Training Dictionary
 % Do dictionary learning
-[D, X, optinf] = cbpdndliu_grd(D0, Sh, mu1,mu2, lambda, opt);
+[D, X, optinf] = cbpdndliu_grd(D0, S0, mu1,mu2, lambda, opt);
 
 
 
 %% Plotting and Saving Info
 % Plot functional value evolution
 figure;
-plot(optinf.itstat(:,2));
+plot(log(optinf.itstat(:,2)));
 xlabel('Iterations');
 ylabel('Functional value');
 
@@ -167,16 +164,20 @@ opt1.unifscale = 0;
 h{4} = square_plot(DX,opt1);
 
 
+%saving the work
+folder_tag = 'Noise';
+tag = 'test';
 if ~exist(strcat(sporco_path,'/Results/DictLearn/',folder_tag),'dir')
     mkdir(strcat(sporco_path,'/Results/DictLearn/',folder_tag));
 end
 name = {'Dict','LowRec','MidRec','HighRec'};
-for i = 1:4
-    saveas(h{i},strcat(sporco_path,'/Results/DictLearn/',folder_tag,'/',...
-        tag,name{i}),'fig');
-end
 
-if ~strcmp(tag,'test')
+if ~strcmp(tag,'test')   
+    for i = 1:4
+        saveas(h{i},strcat(sporco_path,'/Results/DictLearn/',folder_tag,'/',...
+            tag,name{i}),'fig');
+    end
+    
     par.mu1 = mu1;
     par.mu2 = mu2;
     par.lambda = lambda;
@@ -185,16 +186,3 @@ if ~strcmp(tag,'test')
     par.fsize = opt.DictFilterSizes;
     save(strcat(sporco_path,'/Results/DictLearn/',folder_tag,'/Dict',tag,'.mat'),'D','par');
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
