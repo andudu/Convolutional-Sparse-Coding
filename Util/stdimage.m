@@ -38,8 +38,12 @@ bp = [p1 '/Data'];
 
 % Try to find specified file
 ip = [];
+if strcmp(imnm(end-3:end), '.png')
+    imnm = imnm(1:end-4);
+end
+
 for k = 1:length(sbdr),
-  ipt = [bp '/' sbdr{k} '/' imnm '.png'];
+  ipt = [bp '/' sbdr{k} '/' imnm '.png' ];
   if exist(ipt,'file'),
     ip = ipt;
     break;
