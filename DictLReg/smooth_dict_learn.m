@@ -4,17 +4,18 @@
 crpsz = 256;
 
 %saving the work
-folder_tag = '10Images';
-tag = 'GrD';
+folder_tag = 'Test';
+tag = 'test';
 
 
 image_names = { 'airplane.png' ,   'lena.grey.png', 'boats.png' ,'house.png' ,...
     'monarch.png','barbara.grey.png',  'bridge.grey.png',   'kiel.grey.png',...
     'man.grey.png', 'peppers.png', 'goldhill.png',...
     'mandrill.png' };
-%image_num = size(image_names,2);
-% image_index =  [2,6,7,8,9,10,11];
-image_index = [2,6]; %barbara
+image_num = size(image_names,2);
+image_index = 1:1:12;
+%image_index =  [2,6,7,8,9,10,11];
+%image_index = [2,6]; %barbara
 image_num = length(image_index);
 
 S0 = zeros(crpsz, crpsz, image_num , 'single');
@@ -65,13 +66,13 @@ fltlmbd = 6;
 [Sl, Sh] = lowpass(S0, fltlmbd, npd);
 
 % Construct initial dictionary
-num_dict_high = 5; %smaller dictionary
-num_dict_mid = 5;
-num_dict_low = 5;
+num_dict_high = 22; %smaller dictionary
+num_dict_mid = 6;
+num_dict_low = 3;
 num_dict = num_dict_high+num_dict_low+num_dict_mid;
 small_filter_sz = 8;
-mid_filter_sz = 8;
-big_filter_sz =8;
+mid_filter_sz = 12;
+big_filter_sz =16;
 
 D0 = zeros(big_filter_sz,big_filter_sz,num_dict, 'single');
 
@@ -82,22 +83,22 @@ D0(small_filter_sz/4+1:small_filter_sz/4*3,small_filter_sz/4+1:small_filter_sz/4
 D0(mid_filter_sz/4+1:mid_filter_sz/4*3,mid_filter_sz/4+1:mid_filter_sz/4*3 ...
 ,num_dict_high+1:num_dict_high+num_dict_mid) = single(randn(mid_filter_sz/2,mid_filter_sz/2,num_dict_mid));
 
-% D0(big_filter_sz/4+1:big_filter_sz/4*3,big_filter_sz/4+1:big_filter_sz/4*3 ...
-% ,num_dict_high+num_dict_mid+1:end) = single(randn(big_filter_sz/2,big_filter_sz/2,num_dict_low));
-
 D0(big_filter_sz/4+1:big_filter_sz/4*3,big_filter_sz/4+1:big_filter_sz/4*3 ...
-,num_dict_high+num_dict_mid+1:end) = single(repmat(gauss2d(big_filter_sz/2,big_filter_sz/2,big_filter_sz/4),[1,1,num_dict_low]));
+,num_dict_high+num_dict_mid+1:end) = single(randn(big_filter_sz/2,big_filter_sz/2,num_dict_low));
+
+% D0(big_filter_sz/4+1:big_filter_sz/4*3,big_filter_sz/4+1:big_filter_sz/4*3 ...
+% ,num_dict_high+num_dict_mid+1:end) = single(repmat(gauss2d(big_filter_sz/2,big_filter_sz/2,big_filter_sz/4),[1,1,num_dict_low]));
 
 % Set up cbpdndliu parameters
-lambda = .1;
-mu1= .03; %grd on Dict
-mu2 = .02;    %grd on Coef
-wl1 = [ones(1,num_dict_mid)-.01,ones(1,num_dict_low)-.02];  
-wgrd = [ones(1,num_dict_mid)*.01,ones(1,num_dict_low)*.02];
+lambda = .22;
+mu1= 0; %grd on Dict
+mu2 = 0;    %grd on Coef
+wl1 = [ones(1,num_dict_mid),ones(1,num_dict_low)];  
+wgrd = [ones(1,num_dict_mid)*.0,ones(1,num_dict_low)*.0];
 
 opt = [];
 opt.Verbose = 1;
-opt.MaxMainIter = 200;
+opt.MaxMainIter = 300;
 opt.rho = 50*lambda + 0.5;
 opt.sigma = size(S0,3);
 opt.AutoRho = 1;
