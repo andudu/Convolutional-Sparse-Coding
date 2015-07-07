@@ -1,51 +1,49 @@
-function [Y, Z, optinf] = cbpdnlc(D, S, lambda, mu, opt)
+function [Y, optinf] = cbpdnjnt_new(D, S, lambda, mu, opt)
 
-% cbpdnlc -- Convolutional Basis Pursuit DeNoising with Lowpass Component
+% cbpdnjnt -- Convolutional Basis Pursuit DeNoising with Joint sparsity
 %
-%         argmin_{x_k} (1/2)||\sum_k d_k * x_k + z - s||_2^2 +
+%         argmin_{x_k} (1/2)||\sum_k d_k * x_k - s||_2^2 +
 %                           lambda \sum_k ||x_k||_1 +
-%                           (mu/2) \sum_k ||G_r z||_2^2 +
-%                           (mu/2) \sum_k ||G_c z||_2^2
+%                           mu ||{x_k}||_{2,1}
+%                           2 norm in the spatial directions
 %
 %         The solution is computed using an ADMM approach (see
 %         boyd-2010-distributed) with efficient solution of the main
 %         linear systems (see wohlberg-2014-efficient).
-%
+%   
 % Usage:
-%       [Y, Z, optinf] = cbpdnlc(D, S, lambda, mu, opt);
+%       [Y, optinf] = cbpdnjnt(H, s, lambda, mu, opt)
 %
 % Input:
-%       D           Dictionary filter set (3D array)
-%       S           Input image
-%       lambda      Regularization parameter (l1)
-%       mu          Regularization parameter (l2 of gradient)
-%       opt         Algorithm parameters structure
+%       H           Dictionary filter set (3D array)
+%       s           Input image
+%       lambda      l1 regularization parameter
+%       mu          l2,1 regularization parameter
+%       opt         Algorithm parameters structure  
 %
 % Output:
 %       Y           Dictionary coefficient map set (3D array)
-%       Z           Lowpass component
 %       optinf      Details of optimisation
 %
-%
+% 
 % Options structure fields:
 %   Verbose          Flag determining whether iteration status is displayed.
 %                    Fields are iteration number, functional value,
-%                    data fidelity term, l1 regularisation term, and
-%                    primal and dual residuals (see Sec. 3.3 of
-%                    boyd-2010-distributed). The value of rho is also
-%                    displayed if options request that it is automatically
-%                    adjusted.
+%                    data fidelity term, l1 regularisation term, l2,1 
+%                    regularisation term, and primal and dual residuals 
+%                    (see Sec. 3.3 of boyd-2010-distributed). The value of 
+%                    rho is also displayed if options request that it is 
+%                    automatically adjusted.
 %   MaxMainIter      Maximum main iterations
-%   AbsStopTol       Absolute convergence tolerance (see Sec. 3.3.1 of
-%                    boyd-2010-distributed)
-%   RelStopTol       Relative convergence tolerance (see Sec. 3.3.1 of
+%   AbsStopTol       Absolute convergence tolerance (see Sec. 3.3.1 of 
+%                    boyd-2010-distributed) 
+%   RelStopTol       Relative convergence tolerance (see Sec. 3.3.1 of 
 %                    boyd-2010-distributed)
 %   L1Weight         Weighting array for coefficients in l1 norm of X
-%   Z0               Initial value for Z
 %   Y0               Initial value for Y
 %   U0               Initial value for U
-%   rho              ADMM penalty parameter
-%   AutoRho          Flag determining whether rho is automatically updated
+%   rho              ADMM penalty parameter 
+%   AutoRho          Flag determining whether rho is automatically updated 
 %                    (see Sec. 3.4.1 of boyd-2010-distributed)
 %   AutoRhoPeriod    Iteration period on which rho is updated
 %   RhoRsdlRatio     Primal/dual residual ratio in rho update test
@@ -58,17 +56,17 @@ function [Y, Z, optinf] = cbpdnlc(D, S, lambda, mu, opt)
 %   StdResiduals     Flag determining whether standard residual definitions 
 %                    (see Sec 3.3 of boyd-2010-distributed) are used instead
 %                    of normalised residuals (see wohlberg-2015-adaptive)
-%   RelaxParam       Relaxation parameter (see Sec. 3.4.3 of
+%   RelaxParam       Relaxation parameter (see Sec. 3.4.3 of 
 %                    boyd-2010-distributed)
-%   NoBndryCross     Flag indicating whether all solution coefficients
-%                    corresponding to filters crossing the image boundary
-%                    should be forced to zero.
-%   AuxVarObj        Flag determining whether objective function is computed
+%   NoBndryCross     Flag indicating whether all solution coefficients 
+%                    corresponding to filters crossing the image boundary 
+%                    should be forced to zero.  
+%   AuxVarObj        Flag determining whether objective function is computed 
 %                    using the auxiliary (split) variable
 %   HighMemSolve     Use more memory for a slightly faster solution
 %
 %
-% Author: Brendt Wohlberg <brendt@lanl.gov>  Modified: 2015-06-26
+% Author: Brendt Wohlberg <brendt@lanl.gov>  Modified: 2015-03-05
 %
 % This file is part of the SPORCO library. Details of the copyright
 % and user license can be found in the 'Copyright' and 'License' files
@@ -82,7 +80,7 @@ checkopt(opt, defaultopts([]));
 opt = defaultopts(opt);
 
 % Set up status display for verbose operation
-hstr = 'Itn   Fnc       DFid      l1(x)     l2G(z)    r         s      ';
+hstr = 'Itn   Fnc       DFid      l1        l2,1      r         s      ';
 sfms = '%4d %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e';
 nsep = 64;
 if opt.AutoRho,
@@ -95,6 +93,9 @@ if opt.Verbose && opt.MaxMainIter > 0,
   disp(char('-' * ones(1,nsep)));
 end
 
+% Start timer
+tstart = tic;
+
 % Collapsing of trailing singleton dimensions greatly complicates
 % handling of both SMV and MMV cases. The simplest approach would be
 % if s could always be reshaped to 4d, with dimensions consisting of
@@ -102,21 +103,17 @@ end
 % of filters, and number of measurements, but in the single
 % measurement case the third dimension is collapsed so that the array
 % is only 3d.
-if size(S,3) > 1 && size(S,4) == 1,
+if size(S,3) > 1,
   xsz = [size(S,1) size(S,2) size(D,3) size(S,3)];
   hrm = [1 1 1 size(S,3)];
   % Insert singleton 3rd dimension (for number of filters) so that
   % 4th dimension is number of images in input s volume
   S = reshape(S, [size(S,1) size(S,2) 1 size(S,3)]);
 else
-  xsz = [size(S,1) size(S,2) size(D,3) size(S,4)];
+  xsz = [size(S,1) size(S,2) size(D,3) 1];
   hrm = 1;
 end
 xrm = [1 1 size(D,3)];
-
-% Start timer
-tstart = tic;
-
 % Compute filters in DFT domain
 Df = fft2(D, size(S,1), size(S,2));
 % Convolve-sum and its Hermitian transpose
@@ -124,13 +121,8 @@ Dop = @(x) sum(bsxfun(@times, Df, x), 3);
 DHop = @(x) bsxfun(@times, conj(Df), x);
 % Compute signal in DFT domain
 Sf = fft2(S);
-
-% Default lambda is 1/10 times the lambda value beyond which the
-% solution is a zero vector
-if nargin < 3 | isempty(lambda),
-  b = ifft2(DHop(Sf), 'symmetric');
-  lambda = 0.1*max(vec(abs(b)));
-end
+% S convolved with all filters in DFT domain
+DSf = DHop(Sf);
 
 % Set up algorithm parameters and initialise variables
 rho = opt.rho;
@@ -153,19 +145,8 @@ r = Inf;
 s = Inf;
 epri = 0;
 edua = 0;
-Cgs = 4*ones(size(S,1), size(S,2));
-Cgs(1,:) = Cgs(1,:) - 1;
-Cgs(end,:) = Cgs(end,:) - 1;
-Cgs(:,1) = Cgs(:,1) - 1;
-Cgs(:,end) = Cgs(:,end) - 1;
 
 % Initialise main working variables
-if isempty(opt.Z0),
-  Z = squeeze(S);
-else
-  Z = opt.Z0;
-end
-DX = zeros(size(S));
 X = [];
 if isempty(opt.Y0),
   Y = zeros(xsz);
@@ -187,21 +168,8 @@ end
 k = 1;
 while k <= opt.MaxMainIter & (r > epri | s > edua),
 
-  % Solve Z subproblem
-  SDX = squeeze(S - DX);
-  for l = 1:2,
-    Z = l2gsstep(Z, SDX, Cgs, mu);
-  end
-  clear SDX;
-  if ndims(S) > 3,
-    Z = reshape(Z, [size(S,1) size(S,2) 1 size(S,4)]);
-  end
-  SZf = Sf - fft2(Z);
-  Z = squeeze(Z);
-  DSZf = DHop(SZf);  % S-Z convolved with all filters in DFT domain
-  
   % Solve X subproblem
-  Xf = solvedbi_sm(Df, rho, DSZf + rho*fft2(Y - U), C);
+  Xf = solvedbi_sm(Df, rho, DSf + rho*fft2(Y - U), C);
   X = ifft2(Xf, 'symmetric');
 
   % See pg. 21 of boyd-2010-distributed
@@ -212,10 +180,10 @@ while k <= opt.MaxMainIter & (r > epri | s > edua),
   end
 
   % Solve Y subproblem
-  Y = shrink(Xr + U, (lambda/rho)*opt.L1Weight);
+  Y = shrink21(Xr + U, lambda/rho, mu/rho, opt.L1Weight);
   if opt.NoBndryCross,
-    Y((end-size(D,1)+2):end,:,:,:) = 0;
-    Y(:,(end-size(D,1)+2):end,:,:) = 0;
+    Y((end-size(H,1)+2):end,:,:,:) = 0;
+    Y(:,(end-size(H,1)+2):end,:,:) = 0;
   end
 
   % Update dual variable
@@ -224,19 +192,15 @@ while k <= opt.MaxMainIter & (r > epri | s > edua),
   % Compute data fidelity term in Fourier domain (note normalisation)
   if opt.AuxVarObj,
     Yf = fft2(Y); % This represents unnecessary computational cost
-    DXf = sum(bsxfun(@times,Df,Yf),3);
-    Jdf = sum(vec(abs(DXf-SZf).^2))/(2*xsz(1)*xsz(2));
-    Jl1 = sum(abs(vec(bsxfun(@times, opt.L1Weight, Y))));
+    Jdf = sum(vec(abs(sum(bsxfun(@times,Df,Yf),3)-Sf).^2))/(2*xsz(1)*xsz(2));
+    Jl1 = sum(abs(vec(opt.L1Weight.*Y)));
+    Jl21 = sum(sqrt(vec(sum(Y.^2,3))));
   else
-    DXf = sum(bsxfun(@times,Df,Xf),3);
-    Jdf = sum(vec(abs(DXf-SZf).^2))/(2*xsz(1)*xsz(2));
-    Jl1 = sum(abs(vec(bsxfun(@times, opt.L1Weight, X))));
+    Jdf = sum(vec(abs(sum(bsxfun(@times,Df,Xf),3)-Sf).^2))/(2*xsz(1)*xsz(2));
+    Jl1 = sum(abs(vec(opt.L1Weight.*X)));
+    Jl21 = sum(sqrt(vec(sum(X.^2,3))));
   end
-
-  DX = ifft2(DXf, 'symmetric');
-  clear DXf;
-  Jl2g = norm(vec(sqrt(Dv(Z).^2 + Dh(Z).^2)))/2.0;
-  Jfn = Jdf + lambda*Jl1 + mu*Jl2g;
+  Jfn = Jdf + lambda*Jl1 + mu*Jl21;
 
   nX = norm(X(:)); nY = norm(Y(:)); nU = norm(U(:));
   if opt.StdResiduals,
@@ -255,12 +219,12 @@ while k <= opt.MaxMainIter & (r > epri | s > edua),
 
   % Record and display iteration details
   tk = toc(tstart);
-  optinf.itstat = [optinf.itstat; [k Jfn Jdf Jl1 Jl2g r s epri edua rho tk]];
+  optinf.itstat = [optinf.itstat; [k Jfn Jdf Jl1 Jl21 r s epri edua rho tk]];
   if opt.Verbose,
     if opt.AutoRho,
-      disp(sprintf(sfms, k, Jfn, Jdf, Jl1, Jl2g, r, s, rho));
+      disp(sprintf(sfms, k, Jfn, Jdf, Jl1, Jl21, r, s, rho));
     else
-      disp(sprintf(sfms, k, Jfn, Jdf, Jl1, Jl2g, r, s));
+      disp(sprintf(sfms, k, Jfn, Jdf, Jl1, Jl21, r, s));
     end
   end
 
@@ -293,14 +257,11 @@ end
 % Record run time and working variables
 optinf.runtime = toc(tstart);
 optinf.X = X;
-optinf.Xf = Xf;
 optinf.Y = Y;
 optinf.U = U;
 optinf.lambda = lambda;
-optinf.mu = mu;
 optinf.rho = rho;
 
-% End status display for verbose operation
 if opt.Verbose && opt.MaxMainIter > 0,
   disp(char('-' * ones(1,nsep)));
 end
@@ -311,60 +272,34 @@ return
 function u = vec(v)
 
   u = v(:);
+  
+return
+
+
+function u = shrink1_scalars(v, a)
+  
+  u = sign(v).*max(0, abs(v) - a);
+  
+return
+
+
+function U = shrink2_row_vectors(V, a)
+
+  n2v = sqrt(sum(sum(V.^2, 1),2));
+  n2v(n2v == 0) = 1;
+  U = bsxfun(@times, V, max(0, n2v - a)./n2v);
 
 return
 
 
-function u = shrink(v, lambda)
-
-  if isscalar(lambda),
-    u = sign(v).*max(0, abs(v) - lambda);
-  else
-    u = sign(v).*max(0, bsxfun(@minus, abs(v), lambda));
+function U = shrink21(V, a, b, W1)
+  
+  if nargin < 4 || isempty(W1),
+    W1 = 1;
   end
+  % See wohlberg-2012-local and chartrand-2013-nonconvex
+  U = shrink2_row_vectors(shrink1_scalars(V,  W1 .* a), b);
 
-return
-
-
-function y = Dv(x)
-  
-  y = [x(2:end,:,:) - x(1:(end-1),:,:); zeros(1,size(x,2),size(x,3))];
-  
-return
-
-
-function y = DvT(x)
-  
-  y = [zeros(1,size(x,2),size(x,3)); x(1:(end-1),:,:)] - ...
-      [x(1:(end-1),:,:); zeros(1,size(x,2),size(x,3))];
-  
-return
-
-
-function y = Dh(x)
-  
-  y = [x(:,2:end,:) - x(:,1:(end-1),:), zeros(size(x,1),1,size(x,3))];
-
-return
-
-
-function y = DhT(x)
-  
-  y = [zeros(size(x,1),1,size(x,3)), x(:,1:(end-1),:)] - ...
-      [x(:,1:(end-1),:), zeros(size(x,1),1,size(x,3))];
-  
-return
-
-
-
-function y = l2gsstep(x, s, Cgs, mu)
- 
-  x01 = [zeros(1,size(x,2),size(x,3)); x(1:(end-1),:,:)];
-  x21 = [x(2:end,:,:); zeros(1,size(x,2),size(x,3))];
-  x10 = [zeros(size(x,1),1,size(x,3)), x(:,1:(end-1),:)];
-  x12 = [x(:,2:end,:), zeros(size(x,1),1,size(x,3))];
-  y = bsxfun(@rdivide, (s + mu*(x01 + x21 + x10 + x12)), (1 + mu*Cgs));
-  
 return
 
 
@@ -384,9 +319,6 @@ function opt = defaultopts(opt)
   end
   if ~isfield(opt,'L1Weight'),
     opt.L1Weight = 1;
-  end
-  if ~isfield(opt,'Z0'),
-    opt.Z0 = [];
   end
   if ~isfield(opt,'Y0'),
     opt.Y0 = [];
