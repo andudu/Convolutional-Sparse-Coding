@@ -27,8 +27,8 @@ fltlmbd = 5;
 [sl_ref,sh_ref] = lowpass(s_ref, fltlmbd, npd);
 
 %setting up params
-lambda = 0.1;
-mu_all = [0,0.02:0.005:0.055];
+lambda = 0.1335; %best lambda
+mu_all = [0,0.001:0.001:0.009,0.01:0.01:0.09,0.1:0.1:0.5];
 ps_nr_dnt_all = zeros(size(mu_all));
 opt = [];
 opt.Verbose = 0;
@@ -40,12 +40,38 @@ opt.HighMemSolve = 1;
 opt.L1Weight = 1;
 
 
-batchname = 'firstbatch';
+%compute the best psnr for regular cbpdn
+disp('Regular CBPDN');
+[X_d, ~] = cbpdn(D, sh, lambda, opt);
+sh_d = scnv(D,X_d);
+s_d = sh_d + sl;
+ps_nr_d = psnr(s_d,s_ref);
 
+%plot various images
+figure;
+subplot(2,2,1);
+imagesc(sh_d); colormap(gray);
+title('hifreqdenoised');
+subplot(2,2,2);
+imagesc(sh); colormap(gray);
+title('noisyhighfreq');
+subplot(2,2,3);
+imagesc(s_d);colormap(gray);
+title(['final image psnr = ' num2str(ps_nr_d)]);
+subplot(2,2,4);
+imagesc(s_d - s_ref); colormap(gray);
+title('difference');
+saveas(gcf,[sporco_path,'/Results/Denoising/GroupNorm/',batchname,'_Regdenoise'],'fig');
+
+batchname = 'MuSearchSigma15New';
+
+
+
+%loop through the joint norm cbpdn
 for iter = 1:length(mu_all)
 mu = mu_all(iter);
 disp('jnt denoising');
-X_nt = cbpdnjnt(D,sh,lambda,mu,opt);
+X_nt = cbpdnjnt_new(D,sh,lambda,mu,opt);
 %computing 
 sh_dnt = scnv(D,X_nt);
 s_dnt = sh_dnt + sl;
@@ -64,12 +90,17 @@ title(['Jnt final image psnr = ' num2str(ps_nr_dnt)]);
 subplot(2,2,4);
 imagesc(s_dc - s_ref); colormap(gray);
 title(['Jnt Diff mu = ',num2str(mu)]);
-saveas(gcf,[batchname,'_jntdenoise_',num2str(iter)],'fig');
+saveas(gcf,[sporco_path,'/Results/Denoising/GroupNorm/',batchname,'_jntdenoise_',num2str(iter)],'fig');
 end
 figure;
-plot(mu_all,ps_nr_dnt_all);
-saveas(gcf,['psnr_mu_',batchname],'fig');
-save([batchname,'.mat'],'mu_all','ps_nr_dnt_all');
+plot(log(mu_all),ps_nr_dnt_all,'b');
+hold on;
+plot(log(mu_all), ps_nr_d*ones(size(mu_all)),'r');
+legend('joint','regular');
+title('sigma = 15/255');
+
+saveas(gcf,[sporco_path,'/Results/Denoising/GroupNorm/','psnr_mu_',batchname],'fig');
+save([sporco_path,'/Results/Denoising/GroupNorm/',batchname,'.mat'],'mu_all','ps_nr_dnt_all','sigma');
 
 
 
