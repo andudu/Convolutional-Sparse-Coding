@@ -24,15 +24,27 @@ for k = 1:size(S0,3),
 end
 S0 = tmp;
 
+%Reduce images size to speed up demo script
+tmp = zeros(128, 128, 5, 'single');
+for k = 1:size(S0,3),
+  tmp(:,:,k) = imresize(S0(:,:,k), 0.5);
+end
+S1 = tmp;
 
 % Filter input images and compute highpass images
 npd = 16;
 fltlmbd = 5;
 [Sl, Sh] = lowpass(S0, fltlmbd, npd);
+[Sl1, Sh1] = lowpass(S1, fltlmbd, npd);
 
-% Construct initial dictionary
-D0 = zeros(8,8,10, 'single');
-D0(3:6,3:6,:) = single(randn(4,4,10));
+% % Construct initial dictionary
+% D0 = zeros(8,8,10, 'single');
+% D0(3:6,3:6,:) = single(randn(4,4,10));
+% % Load a standard dictionary
+load([sporco_path '/Data/ConvDict.mat']);
+dmap = containers.Map(ConvDict.Label, ConvDict.Dict);
+f = dmap('8x8x32');
+D0 = f(:,:,
 
 % Set up cbpdndliu parameters
 lambda = 0.2;
@@ -42,14 +54,14 @@ opt.MaxMainIter = 300;
 opt.rho = 50*lambda + 0.5;
 opt.sigma = size(Sh,3);
 opt.AutoRho = 1;
-opt.AutoRhoPeriod = 10;
+opt.AutoRhoPeriod = 0;
 opt.AutoSigma = 1;
-opt.AutoSigmaPeriod = 10;
-opt.XRelaxParam = 1.8;
-opt.DRelaxParam = 1.8;
+opt.AutoSigmaPeriod = 0;
+opt.XRelaxParam = 1;
+opt.DRelaxParam = 1;
 
 % Do dictionary learning
-[D, X, optinf] = cbpdndliu(D0, Sh, lambda, opt);
+[D, X, optinf] = varsplit_multilearn(D0, Sh,Sh1, lambda, opt);
 
 
 % Display learned dictionary
