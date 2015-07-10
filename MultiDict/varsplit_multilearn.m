@@ -105,18 +105,18 @@ opt = defaultopts(opt);
 
 
 % Set up status display for verbose operation
-hstr = ['Itn   Fnc       DFid      DFid_s       l1     '...
-        'r(X)      s(X)      r(D)      s(D) '];
-sfms = '%4d %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e';
-nsep = 84;
+hstr = ['Itn    Fnc      l1       l1_b      '...
+        'rx       sx      rxb       sxb      rd      sd       rdb      sdb     '];
+sfms = '%4d %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e ';
+nsep = 94;
 if opt.AutoRho,
-  hstr = [hstr '     rho  '];
-  sfms = [sfms ' %9.2e'];
+  hstr = [hstr ' rho     rhob     '];
+  sfms = [sfms ' %5.2e %5.2e '];
   nsep = nsep + 10;
 end
 if opt.AutoSigma,
-  hstr = [hstr '     sigma  '];
-  sfms = [sfms ' %9.2e'];
+  hstr = [hstr 'sig       sigb'];
+  sfms = [sfms ' %5.2e %5.2e'];
   nsep = nsep + 10;
 end
 if opt.Verbose && opt.MaxMainIter > 0,
@@ -195,12 +195,14 @@ Sf_bar = fft2(S_bar);
 % Set up algorithm parameters and initialise variables
 rho = opt.rho;
 if isempty(rho), rho = 50*lambda+1; end;
+rho_bar = rho;
 if opt.AutoRho,
   asgr = opt.RhoRsdlRatio;
   asgm = opt.RhoScaling;
 end
 sigma = opt.sigma;
 if isempty(sigma), sigma = size(S,3); end;
+sigma_bar = sigma;
 if opt.AutoSigma,
   asdr = opt.SigmaRsdlRatio;
   asdm = opt.SigmaScaling;
@@ -259,7 +261,7 @@ if isempty(opt.U0_bar),
   if isempty(opt.Y0_bar),
     U_bar = zeros(xsz_bar, class(S_bar));
   else
-    U_bar = (lambda/rho)*sign(Y_bar);
+    U_bar = (lambda/rho_bar)*sign(Y_bar);
   end
 else
   U_bar = opt.U0_bar;
@@ -320,7 +322,7 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
   X = ifft2(Xf, 'symmetric');
   clear Xf Gf GSf;
 
-  Xf_bar = solvedbi_sm(Gf_bar, rho, GSf_bar + rho*fft2(Y_bar - U_bar));
+  Xf_bar = solvedbi_sm(Gf_bar, rho_bar, GSf_bar + rho_bar*fft2(Y_bar - U_bar));
   X_bar = ifft2(Xf_bar, 'symmetric');
   clear Xf_bar Gf_bar GSf_bar;  
   
@@ -363,9 +365,9 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
     eprix = sqrt(Nx)*opt.AbsStopTol+max(nX,nY)*opt.RelStopTol;
     eduax = sqrt(Nx)*opt.AbsStopTol+rho*nU*opt.RelStopTol;
     rx_bar = norm(vec(X_bar - Y_bar));
-    sx_bar = norm(vec(rho*(Yprv_bar - Y_bar)));
+    sx_bar = norm(vec(rho_bar*(Yprv_bar - Y_bar)));
     eprix_bar = sqrt(Nx_bar)*opt.AbsStopTol+max(nX_bar,nY_bar)*opt.RelStopTol;
-    eduax_bar = sqrt(Nx_bar)*opt.AbsStopTol+rho*nU*opt.RelStopTol;
+    eduax_bar = sqrt(Nx_bar)*opt.AbsStopTol+rho_bar*nU*opt.RelStopTol;
   else
     % See wohlberg-2015-adaptive
     rx = norm(vec(X - Y))/max(nX,nY);
@@ -393,9 +395,9 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
   % but it appears to be more stable to use the shrunk coefficient variable Y
   if strcmp(opt.LinSolve, 'SM'),
     Df = solvemdbi_ism(Yf, sigma, YSf + sigma*fft2(G - H));
-    Df_bar = solvemdbi_ism(Yf_bar, sigma, YSf_bar + sigma*fft2(G_bar - H_bar));
+    Df_bar = solvemdbi_ism(Yf_bar, sigma_bar, YSf_bar + sigma_bar*fft2(G_bar - H_bar));
   else
-    [Df, cgst] = solvemdbi_cg(Yf, sigma, YSf + sigma*fft2(G - H), ...
+    [Df, cgst] = solvemdbi_cg(Yf, sigma_bar, YSf + sigma_bar*fft2(G - H), ...
                               cgt, opt.MaxCGIter, Df(:)); %ignore this too
   end
   %clear YSf YSf_bar;
@@ -437,31 +439,30 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
     eprid = sqrt(Nd)*opt.AbsStopTol+max(nD,nG)*opt.RelStopTol;
     eduad = sqrt(Nd)*opt.AbsStopTol+sigma*nH*opt.RelStopTol;
     rd_bar = norm(vec(D_bar - G_bar));
-    sd_bar = norm(vec(sigma*(Gprv_bar - G_bar)));
+    sd_bar = norm(vec(sigma_bar*(Gprv_bar - G_bar)));
     eprid_bar = sqrt(Nd_bar)*opt.AbsStopTol+max(nD_bar,nG_bar)*opt.RelStopTol;
-    eduad_bar = sqrt(Nd_bar)*opt.AbsStopTol+sigma*nH_bar*opt.RelStopTol;
+    eduad_bar = sqrt(Nd_bar)*opt.AbsStopTol+sigma_bar*nH_bar*opt.RelStopTol;
   else
     % See wohlberg-2015-adaptive
     rd = norm(vec(D - G))/max(nD,nG);
     sd = norm(vec(Gprv - G))/nH;
     eprid = sqrt(Nd)*opt.AbsStopTol/max(nD,nG)+opt.RelStopTol;
-    eduad = sqrt(Nd)*opt.AbsStopTol/(sigma*nH)+opt.RelStopTol;
+    eduad = sqrt(Nd)*opt.AbsStopTol/(sigma_bar*nH)+opt.RelStopTol;
     rd_bar = norm(vec(D_bar - G_bar))/max(nD_bar,nG_bar);
     sd_bar = norm(vec(Gprv_bar - G_bar))/nH_bar;
     eprid_bar = sqrt(Nd_bar)*opt.AbsStopTol/max(nD_bar,nG_bar)+opt.RelStopTol;
-    eduad_bar = sqrt(Nd_bar)*opt.AbsStopTol/(sigma*nH_bar)+opt.RelStopTol;
+    eduad_bar = sqrt(Nd_bar)*opt.AbsStopTol/(sigma_bar*nH_bar)+opt.RelStopTol;
   end
 
-  %max pooling the residuals(how to do that properly)
-  rd = sqrt(rd^2+rd_bar^2);
-  sd = sqrt(sd^2+sd_bar^2);
-  eprid = min(eprid,eprid_bar);
-  eduad = min(eduad,eduad_bar);
-  rx = max(rx,rx_bar);
-  sx = max(sx,sx_bar);
-  eprix = min(eprix,eprix_bar);
-  eduax = min(eduax,eduax_bar);  
-  Jl1 = Jl1 + Jl1_bar;
+%   %max pooling the residuals(how to do that properly? This is not good)
+%   rd = sqrt(rd^2+rd_bar^2);
+%   sd = sqrt(sd^2+sd_bar^2);
+%   eprid = min(eprid,eprid_bar);
+%   eduad = min(eduad,eduad_bar);
+%   rx = max(rx,rx_bar);
+%   sx = max(sx,sx_bar);
+%   eprix = min(eprix,eprix_bar);
+%   eduax = min(eduax,eduax_bar);  
   
  
   % Apply CG auto tolerance policy if enabled
@@ -480,20 +481,20 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
   Jdf = sum(vec(abs(sum(bsxfun(@times,Gf,Yf),3)-Sf).^2))/(2*xsz(1)*xsz(2));
   Jdf_bar = sum(vec(abs(sum(bsxfun(@times,Gf_bar,Yf_bar),3)-Sf_bar).^2))/(2*xsz_bar(1)*xsz_bar(2));
   clear Yf Yf_bar;
-  Jfn = Jdf +Jdf_bar+ lambda*Jl1;
+  Jfn = Jdf +lambda*Jdf_bar+ lambda*Jl1;
 
 
   % Record and display iteration details
   tk = toc(tstart);
   optinf.itstat = [optinf.itstat;...
-       [k Jfn Jdf Jl1 rx sx rd sd eprix eduax eprid eduad rho sigma tk]];
+       [k Jfn Jl1 rx sx rd sd eprix eduax eprid eduad rho sigma tk]];
   if opt.Verbose,
-    dvc = [k, Jfn, Jdf, Jdf_bar, Jl1, rx, sx, rd, sd];
+    dvc = [k,Jfn,Jl1,Jl1_bar, rx, sx,rx_bar,sx_bar, rd, sd,rd_bar,sd_bar];
     if opt.AutoRho,
-      dvc = [dvc rho];
+      dvc = [dvc rho, rho_bar];
     end
     if opt.AutoSigma,
-      dvc = [dvc sigma];
+      dvc = [dvc sigma, sigma_bar];
     end
     disp(sprintf(sfms, dvc));
   end
@@ -512,9 +513,27 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
       if rx > opt.RhoRsdlRatio*sx, rsf = rhomlt; end
       if sx > opt.RhoRsdlRatio*rx, rsf = 1/rhomlt; end
       rho = rsf*rho;
-      U = U/rsf; %for bars too
+      U = U/rsf; 
     end
   end
+  
+  if opt.AutoRho_bar, % for bars too
+    if k ~= 1 && mod(k, opt.AutoRhoPeriod) == 0,
+      if opt.AutoRhoScaling_bar,
+        rhomlt_bar = sqrt(rx/sx);
+        if rhomlt_bar < 1, rhomlt_bar = 1/rhomlt_bar; end
+        if rhomlt_bar > opt.RhoScaling_bar, rhomlt_bar = opt.RhoScaling_bar; end
+      else
+        rhomlt_bar = opt.RhoScaling_bar;
+      end
+      rsf_bar = 1;
+      if rx_bar > opt.RhoRsdlRatio*sx, rsf_bar = rhomlt_bar; end
+      if sx_bar > opt.RhoRsdlRatio*rx, rsf_bar = 1/rhomlt_bar; end
+      rho_bar = rsf_bar*rho_bar;
+      U_bar = U_bar/rsf_bar; %for bars too
+    end
+  end  
+  
   if opt.AutoSigma,
     if k ~= 1 && mod(k, opt.AutoSigmaPeriod) == 0,
       if opt.AutoSigmaScaling,
@@ -532,7 +551,23 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
     end
   end
 
-
+  if opt.AutoSigma_bar,
+    if k ~= 1 && mod(k, opt.AutoSigmaPeriod_bar) == 0,
+      if opt.AutoSigmaScaling_bar,
+        sigmlt_bar = sqrt(rd_bar/sd_bar);
+        if sigmlt_bar < 1, sigmlt_bar = 1/sigmlt_bar; end
+        if sigmlt_bar > opt.SigmaScaling_bar, sigmlt_bar = opt.SigmaScaling_bar; end
+      else
+        sigmlt_bar = opt.SigmaScaling_bar;
+      end
+      ssf_bar = 1;
+      if rd_bar > opt.SigmaRsdlRatio*sd_bar, ssf_bar = sigmlt_bar; end
+      if sd_bar > opt.SigmaRsdlRatio*rd_bar, ssf_bar = 1/sigmlt_bar; end
+      sigma = ssf_bar*sigma;
+      H = H/ssf_bar;
+    end
+  end
+  
   k = k + 1;
 
 end
@@ -663,6 +698,26 @@ function opt = defaultopts(opt)
   if ~isfield(opt,'AutoRhoScaling'),
     opt.AutoRhoScaling = 0;
   end
+  if ~isfield(opt,'rho_bar'),
+    opt.rho_bar = [];
+  end
+  if ~isfield(opt,'AutoRho_bar'),
+    opt.AutoRho_bar = 0;
+  end
+  if ~isfield(opt,'AutoRhoPeriod_bar'),
+    opt.AutoRhoPeriod_bar = 10;
+  end
+  if ~isfield(opt,'RhoRsdlRatio_bar'),
+    opt.RhoRsdlRatio_bar = 10;
+  end
+  if ~isfield(opt,'RhoScaling_bar'),
+    opt.RhoScaling_bar = 2;
+  end
+  if ~isfield(opt,'AutoRhoScaling_bar'),
+    opt.AutoRhoScaling_bar = 0;
+  end
+  
+  
   if ~isfield(opt,'sigma'),
     opt.sigma = [];
   end
@@ -681,6 +736,26 @@ function opt = defaultopts(opt)
   if ~isfield(opt,'AutoSigmaScaling'),
     opt.AutoSigmaScaling = 0;
   end
+  
+  if ~isfield(opt,'sigma_bar'),
+    opt.sigma_bar = [];
+  end
+  if ~isfield(opt,'AutoSigma_bar'),
+    opt.AutoSigma_bar = 0;
+  end
+  if ~isfield(opt,'AutoSigmaPeriod_bar'),
+    opt.AutoSigmaPeriod_bar = 10;
+  end
+  if ~isfield(opt,'SigmaRsdlRatio_bar'),
+    opt.SigmaRsdlRatio_bar = 10;
+  end
+  if ~isfield(opt,'SigmaScaling_bar'),
+    opt.SigmaScaling_bar = 2;
+  end
+  if ~isfield(opt,'AutoSigmaScaling_bar'),
+    opt.AutoSigmaScaling_bar = 0;
+  end  
+  
   if ~isfield(opt,'StdResiduals'),
     opt.StdResiduals = 0;
   end

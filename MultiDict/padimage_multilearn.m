@@ -1,7 +1,7 @@
-function [D, Y, Y_bar, optinf] = varsplit_multilearn(D0, S,S_bar, lambda, opt)
+function [D, Y, optinf] = padimage_multilearn(D0, S, lambda, opt)
 
-% varsplit_multilearn -- Convolutional BPDN Dictionary Learning (Interleaved Update)
-%   2 sets of levels at this point
+% cbpdndliu -- Convolutional BPDN Dictionary Learning (Interleaved Update)
+%
 %         argmin_{x_k,d_k} (1/2)||\sum_k h_k * x_k - s||_2^2 +
 %                           lambda \sum_k ||x_k||_1
 %
@@ -14,15 +14,14 @@ function [D, Y, Y_bar, optinf] = varsplit_multilearn(D0, S,S_bar, lambda, opt)
 %
 % Input:
 %       D0          Initial dictionary
-%       S           Input images of larger size
-%       S_bar       Input images of smaller size
+%       S           Input images
 %       lambda      Regularization parameter
 %       opt         Options/algorithm parameters structure (see below)
+%       imsz        2xN matrix of image/coefficient size
 %
 % Output:
-%       D           Jointly Learned Dictionary filter set (3D array)
-%       Y           Larger Coefficient maps (3D array)
-%       Y_bar       Smaller Coefficient maps (3D array)
+%       D           Dictionary filter set (3D array)
+%       X           Coefficient maps (3D array)
 %       optinf      Details of optimisation
 %
 %
@@ -103,8 +102,8 @@ opt = defaultopts(opt);
 
 %cropping matrix
 Z_crop = zeros(size(S,1),size(S,2),1,size(S,3));
-for i = 1:size(opt.ImSize,2)
-   Z_crop(1:opt.ImSize(1,i),1:opt.ImSize(2,i),1,i) = ones(opt.ImSize(1,i),opt.ImSize(2,i));
+for i = 1:size(opt.imsz,2)
+   Z_crop(1:opt.imsz(1,i),1:opt.imsz(2,i),1,i) = ones(opt.imsz(1,i),opt.imsz(2,i));
 end
 
 
@@ -139,7 +138,6 @@ end
 % is only 3d.
 if size(S,3) > 1,
   xsz = [size(S,1) size(S,2) size(D0,3) size(S,3)];
-  xsz_bar = [size(S_bar,1) size(S_bar,2) size(D0,3) size(S_bar,3)];
   hrm = [1 1 1 size(S,3)];
   % Insert singleton 3rd dimension (for number of filters) so that
   % 4th dimension is number of images in input s volume
@@ -169,7 +167,6 @@ Pnrm = @(x) bsxfun(@rdivide, x, sqrt(sum(sum(x.^2, 1), 2)));
 % (zero-pad and crop respectively)
 Pzp = @(x) zpad(x, xsz(1:2));
 PzpT = @(x) bcrop(x, dsz);
-Pzp_bar = @(x) zpad(x, xsz_bar(1:2));
 
 % Projection of dictionary filters onto constraint set
 if opt.ZeroMean,
@@ -177,13 +174,6 @@ if opt.ZeroMean,
 else
   Pcn = @(x) Pnrm(Pzp(PzpT(x)));
 end
-
-if opt.ZeroMean,
-  Pcn_bar = @(x) Pnrm(Pzp_bar(Pzmn(PzpT(x))));
-else
-  Pcn_bar = @(x) Pnrm(Pzp_bar(PzpT(x)));
-end
-
 
 % Start timer
 tstart = tic;
@@ -193,7 +183,6 @@ D = Pnrm(D0);
 
 % Compute signal in DFT domain
 Sf = fft2(S);
-Sf_bar = fft2(S_bar);
 
 % Set up algorithm parameters and initialise variables
 rho = opt.rho;
@@ -220,26 +209,13 @@ eduad = 0;
 
 % Initialise main working variables
 X = [];
-X_bar = [];
-
-%additional dual variable L
-L = zeros(size(D));
-
-if isempty(opt.Y0), %initialize Y
+if isempty(opt.Y0),
   Y = zeros(xsz, class(S));
 else
   Y = opt.Y0;
 end
 Yprv = Y;
-if isempty(opt.Y0_bar),
-  Y_bar = zeros(xsz_bar, class(S));
-else
-  Y_bar = opt.Y0_bar;
-end
-Yprv_bar = Y_bar;
-
-
-if isempty(opt.U0), %initialize U
+if isempty(opt.U0),
   if isempty(opt.Y0),
     U = zeros(xsz, class(S));
   else
@@ -248,37 +224,7 @@ if isempty(opt.U0), %initialize U
 else
   U = opt.U0;
 end
-if isempty(opt.U0_bar),
-  if isempty(opt.Y0_bar),
-    U_bar = zeros(xsz_bar, class(S_bar));
-  else
-    U_bar = (lambda/rho)*sign(Y_bar);
-  end
-else
-  U_bar = opt.U0_bar;
-end
-
-
-Df_bar = []; %G_bar
-if isempty(opt.G0_bar),
-  G_bar = Pzp_bar(D);
-else
-  G_bar = opt.G0_bar;
-end
-Gprv_bar = G_bar;
-if isempty(opt.H0_bar),
-  if isempty(opt.G0_bar),
-    H_bar = zeros(size(G_bar), class(S_bar));
-  else
-    H_bar = G_bar;
-  end
-else
-  H_bar = opt.H0_bar;
-end
-Gf_bar = fft2(G_bar, size(S_bar,1), size(S_bar,2));
-GSf_bar = bsxfun(@times, conj(Gf_bar), Sf_bar);
-
-Df = []; %G
+Df = [];
 if isempty(opt.G0),
   G = Pzp(D);
 else
@@ -298,8 +244,6 @@ Gf = fft2(G, size(S,1), size(S,2));
 GSf = bsxfun(@times, conj(Gf), Sf);
 
 
-
-
 % Main loop
 k = 1;
 while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
@@ -312,126 +256,92 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
   X = ifft2(Xf, 'symmetric');
   clear Xf Gf GSf;
 
-  Xf_bar = solvedbi_sm(Gf_bar, rho, GSf_bar + rho*fft2(Y_bar - U_bar));
-  X_bar = ifft2(Xf_bar, 'symmetric');
-  clear Xf_bar Gf_bar GSf_bar;  
-  
   % See pg. 21 of boyd-2010-distributed
   if opt.XRelaxParam == 1,
     Xr = X;
-    Xr_bar = X_bar;
   else
     Xr = opt.XRelaxParam*X + (1-opt.XRelaxParam)*Y;
-    Xr_bar = opt.XRelaxParam*X_bar + (1-opt.XRelaxParam)*Y_bar;
   end
 
   % Solve Y subproblem
   Y = shrink(Xr + U, (lambda/rho)*opt.L1Weight);
-  Y_bar = shrink(Xr_bar + U_bar, (lambda/rho)*opt.L1Weight); %set fixed for now
   %crop the Y's according to size. 
+  for i = 1:size(Y,4)
+      Y(:,:,:,i) = bsxfun(@times,Y(:,:,:,i),Z_crop(:,:,1,i));
+  end
   
-  if opt.NoBndryCross, %ignore this stuff for now
+  if opt.NoBndryCross,
     Y((end-size(D,1)+2):end,:,:,:) = 0;
     Y(:,(end-size(D,1)+2):end,:,:) = 0;
   end
-  
   Yf = fft2(Y);
-  Yf_bar = fft2(Y_bar);
   YSf = sum(bsxfun(@times, conj(Yf), Sf), 4);
-  YSf_bar = sum(bsxfun(@times, conj(Yf_bar), Sf_bar), 4);
-  
+
   % Update dual variable corresponding to X, Y
   U = U + Xr - Y;
-  U_bar = U_bar+Xr_bar-Y_bar;
-  clear Xr Xr_bar;
+  clear Xr;
 
   % Compute primal and dual residuals and stopping thresholds for X update
   nX = norm(X(:)); nY = norm(Y(:)); nU = norm(U(:));
-  nX_bar = norm(X_bar(:)); nY_bar = norm(Y_bar(:)); nU_bar = norm(U_bar(:));
   if opt.StdResiduals,
     % See pp. 19-20 of boyd-2010-distributed
     rx = norm(vec(X - Y));
     sx = norm(vec(rho*(Yprv - Y)));
     eprix = sqrt(Nx)*opt.AbsStopTol+max(nX,nY)*opt.RelStopTol;
     eduax = sqrt(Nx)*opt.AbsStopTol+rho*nU*opt.RelStopTol;
-    rx_bar = norm(vec(X_bar - Y_bar));
-    sx_bar = norm(vec(rho*(Yprv_bar - Y_bar)));
-    eprix_bar = sqrt(Nx_bar)*opt.AbsStopTol+max(nX_bar,nY_bar)*opt.RelStopTol;
-    eduax_bar = sqrt(Nx_bar)*opt.AbsStopTol+rho*nU*opt.RelStopTol;
   else
     % See wohlberg-2015-adaptive
     rx = norm(vec(X - Y))/max(nX,nY);
     sx = norm(vec(Yprv - Y))/nU;
     eprix = sqrt(Nx)*opt.AbsStopTol/max(nX,nY)+opt.RelStopTol;
     eduax = sqrt(Nx)*opt.AbsStopTol/(rho*nU)+opt.RelStopTol;
-    rx_bar = norm(vec(X_bar - Y_bar))/max(nX_bar,nY_bar);
-    sx_bar = norm(vec(Yprv_bar - Y_bar))/nU_bar;
-    eprix_bar = sqrt(Nx_bar)*opt.AbsStopTol/max(nX_bar,nY_bar)+opt.RelStopTol;
-    eduax_bar = sqrt(Nx_bar)*opt.AbsStopTol/(rho*nU)+opt.RelStopTol;
   end
   clear X;
 
   % Compute l1 norm of Y
   Jl1 = sum(abs(vec(opt.L1Weight .* Y)));
-  Jl1_bar = sum(abs(vec(opt.L1Weight .* Y_bar)));
-  
+
   % Update record of previous step Y
   Yprv = Y;
-  Yprv_bar = Y_bar;
 
-  
+
   % Solve D subproblem. Similarly, it would be simpler and more efficient to
   % solve for D using the main coefficient variable X as the coefficients,
   % but it appears to be more stable to use the shrunk coefficient variable Y
   if strcmp(opt.LinSolve, 'SM'),
-    Df = solvemdbi_ism(Yf, sigma, YSf + sigma*fft2(G - H));
-    Df_bar = solvemdbi_ism(Yf_bar, sigma, YSf_bar + sigma*fft2(G_bar - H_bar));
+    Df = solvemdbi_ism(Yf, sigma, YSf + sigma*fft2(G - H));  
   else
     [Df, cgst] = solvemdbi_cg(Yf, sigma, YSf + sigma*fft2(G - H), ...
-                              cgt, opt.MaxCGIter, Df(:)); %ignore this too
+                              cgt, opt.MaxCGIter, Df(:));
   end
-  clear YSf YSf_bar;
+  clear YSf;
   D = ifft2(Df, 'symmetric');
-  D_bar = ifft(Df_bar,'symmetric');
-  if strcmp(opt.LinSolve, 'SM'), clear Df Df_bar; end
+  if strcmp(opt.LinSolve, 'SM'), clear Df; end
 
   % See pg. 21 of boyd-2010-distributed
   if opt.DRelaxParam == 1,
     Dr = D;
-    Dr_bar = D_bar;
   else
     Dr = opt.DRelaxParam*D + (1-opt.DRelaxParam)*G;
-    Dr_bar = opt.DRelaxParam*D_bar + (1-opt.DRelaxParam)*G_bar;
   end
 
-  % Solve G G_bar subproblem
-  G = Pnrm((PzpT(Dr + H)+PzpT(G_bar)-L)/2);
+  % Solve G subproblem
+  G = Pcn(Dr + H);
   Gf = fft2(G);
   GSf = bsxfun(@times, conj(Gf), Sf);
-  G_bar = Pnrm((PzpT(Dr_bar + H_bar)+PzpT(G)+L)/2);
-  Gf_bar = fft2(G_bar);
-  GSf_bar = bsxfun(@times, conj(Gf_bar), Sf_bar);
-  
+
   % Update dual variable corresponding to D, G
   H = H + Dr - G;
-  H_bar = H_bar + Dr_bar - G_bar;
-  L = L+Pzpt(G)-Pzpt(G_bar);
-  clear Dr Dr_bar;
+  clear Dr;
 
   % Compute primal and dual residuals and stopping thresholds for D update
-  nD = norm(D(:)); nG = norm(G(:)); nH = norm(H(:));  
-  nD_bar = norm(D_bar(:)); nG_bar = norm(G_bar(:)); nH_bar = norm(H_bar(:));
-  
+  nD = norm(D(:)); nG = norm(G(:)); nH = norm(H(:));
   if opt.StdResiduals,
     % See pp. 19-20 of boyd-2010-distributed
     rd = norm(vec(D - G));
     sd = norm(vec(sigma*(Gprv - G)));
     eprid = sqrt(Nd)*opt.AbsStopTol+max(nD,nG)*opt.RelStopTol;
     eduad = sqrt(Nd)*opt.AbsStopTol+sigma*nH*opt.RelStopTol;
-    rd_bar = norm(vec(D_bar - G_bar));
-    sd_bar = norm(vec(sigma*(Gprv_bar - G_bar)));
-    eprid_bar = sqrt(Nd_bar)*opt.AbsStopTol+max(nD_bar,nG_bar)*opt.RelStopTol;
-    eduad_bar = sqrt(Nd_bar)*opt.AbsStopTol+sigma*nH*opt.RelStopTol;
   else
     % See wohlberg-2015-adaptive
     rd = norm(vec(D - G))/max(nD,nG);
@@ -582,6 +492,9 @@ function opt = defaultopts(opt)
   if ~isfield(opt,'Verbose'),
     opt.Verbose = 0;
   end
+  if ~isfield(opt,'imsz'),
+    opt.imsz = [];
+  end  
   if ~isfield(opt,'ImSize'),
     opt.ImSize = 1;
   end
