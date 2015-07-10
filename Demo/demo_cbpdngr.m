@@ -21,7 +21,7 @@ end
 
 scnv = @(d,x) ifft2(sum(bsxfun(@times, fft2(d, size(x,1), size(x,2)), ...
                                fft2(x)),3), 'symmetric');
-
+               
 % Highpass filter test image
 npd = 16;
 fltlmbd = 5;

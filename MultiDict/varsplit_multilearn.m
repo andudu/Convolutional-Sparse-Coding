@@ -41,7 +41,7 @@ function [D, Y, Y_bar, optinf] = varsplit_multilearn(D0, S,S_bar, lambda, opt)
 %   RelStopTol       Relative convergence tolerance (see Sec. 3.3.1 of
 %                    boyd-2010-distributed)
 %   L1Weight         Weight array for L1 norm
-%   ImSize          Specifying the actual size of the image. 
+%   ImSize           Specifying the actual size of the image. 
 %   Y0               Initial value for Y
 %   U0               Initial value for U
 %   G0               Initial value for G (overrides D0 if specified)
@@ -520,7 +520,7 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
   if opt.AutoRho_bar, % for bars too
     if k ~= 1 && mod(k, opt.AutoRhoPeriod) == 0,
       if opt.AutoRhoScaling_bar,
-        rhomlt_bar = sqrt(rx/sx);
+        rhomlt_bar = sqrt(rx_bar/sx_bar);
         if rhomlt_bar < 1, rhomlt_bar = 1/rhomlt_bar; end
         if rhomlt_bar > opt.RhoScaling_bar, rhomlt_bar = opt.RhoScaling_bar; end
       else
@@ -640,9 +640,6 @@ function opt = defaultopts(opt)
 
   if ~isfield(opt,'Verbose'),
     opt.Verbose = 0;
-  end
-  if ~isfield(opt,'ImSize'),
-    opt.ImSize = 1;
   end
   if ~isfield(opt,'MaxMainIter'),
     opt.MaxMainIter = 1000;

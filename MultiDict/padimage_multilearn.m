@@ -17,7 +17,7 @@ function [D, Y, optinf] = padimage_multilearn(D0, S, lambda, opt)
 %       S           Input images
 %       lambda      Regularization parameter
 %       opt         Options/algorithm parameters structure (see below)
-%       imsz        2xN matrix of image/coefficient size
+%       imsz        2xN matrix of image/coefficient size (pad zeros)
 %
 % Output:
 %       D           Dictionary filter set (3D array)
