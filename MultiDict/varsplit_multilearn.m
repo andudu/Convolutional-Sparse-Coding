@@ -337,7 +337,7 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
 
   % Solve Y subproblem
   Y = shrink(Xr + U, (lambda/rho)*opt.L1Weight);
-  Y_bar = shrink(Xr_bar + U_bar, (lambda/rho)*opt.L1Weight); %set fixed for now
+  Y_bar = shrink(Xr_bar + U_bar, (lambda/rho_bar)*opt.L1Weight); %set fixed for now
   %crop the Y's according to size. 
   
   if opt.NoBndryCross, %ignore this stuff for now
@@ -481,7 +481,7 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
   Jdf = sum(vec(abs(sum(bsxfun(@times,Gf,Yf),3)-Sf).^2))/(2*xsz(1)*xsz(2));
   Jdf_bar = sum(vec(abs(sum(bsxfun(@times,Gf_bar,Yf_bar),3)-Sf_bar).^2))/(2*xsz_bar(1)*xsz_bar(2));
   clear Yf Yf_bar;
-  Jfn = Jdf +lambda*Jdf_bar+ lambda*Jl1;
+  Jfn = Jdf +Jdf_bar+ lambda*(Jl1+Jl1_bar);
 
 
   % Record and display iteration details

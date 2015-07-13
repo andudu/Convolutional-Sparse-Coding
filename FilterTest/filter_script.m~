@@ -1,7 +1,0 @@
-gr = [1,-1];
-test = fft(gr,1000);
-figure;
-plot(abs(test));
-figure;
-plot(real(test));
-

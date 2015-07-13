@@ -1,9 +1,0 @@
-%timetest for cropping
-
-z = rand(1000,1000);
-y = [];
-
-tic;
-
-for i = 1:100
-    y = z(

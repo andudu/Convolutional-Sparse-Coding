@@ -16,15 +16,15 @@ tmp = zeros(256, 256, 5, 'single');
 for k = 1:size(S0,3),
   tmp(:,:,k) = imresize(S0(:,:,k), 0.5);
 end
-S0 = tmp;
-
-
-%Reduce images size to speed up demo script
-tmp = zeros(128, 128, 5, 'single');
-for k = 1:size(S0,3),
-  tmp(:,:,k) = imresize(S0(:,:,k), 0.5);
-end
 S1 = tmp;
+
+
+% %Reduce images size to speed up demo script
+% tmp = zeros(128, 128, 5, 'single');
+% for k = 1:size(S0,3),
+%   tmp(:,:,k) = imresize(S0(:,:,k), 0.5);
+% end
+% S1 = tmp;
 
 
 % Filter input images and compute highpass images
@@ -46,7 +46,7 @@ D0(3:6,3:6,:) = single(randn(4,4,16));
 lambda = 0.2;
 opt = [];
 opt.Verbose = 1;
-opt.MaxMainIter = 200;
+opt.MaxMainIter = 500;
 opt.rho = 50*lambda + 0.5;
 opt.sigma = size(Sh,3);
 opt.AutoRho = 1;
@@ -66,7 +66,7 @@ opt.HighFilterNum = 4;
 % Do dictionary learning
 [D, X,X_bar, optinf] = joint_multilearn(D0, Sh, Sh1, lambda, opt);
 
-tag = '5im12low4highcold256';
+tag = '5im12low4highcold512';
 % Display learned dictionary
 o1.grey =1;
 o1.unifscale =0;
@@ -90,7 +90,7 @@ saveas(gcf,['JointResults/',tag,'_highresonly'],'fig');
 a = reshape(sum(abs(X_bar),3),size(X_bar,1),size(X_bar,2),size(X_bar,4));
 square_plot(a,o1);
 saveas(gcf,['JointResults/',tag,'_lowresjoint'],'fig');
-save(['VarsplitResults/',tag,'_dict.mat'],'D','X','X_bar');
+save(['JointResults/',tag,'_dict.mat'],'D','X','X_bar');
 
 
 
