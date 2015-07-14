@@ -563,8 +563,8 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
       ssf_bar = 1;
       if rd_bar > opt.SigmaRsdlRatio*sd_bar, ssf_bar = sigmlt_bar; end
       if sd_bar > opt.SigmaRsdlRatio*rd_bar, ssf_bar = 1/sigmlt_bar; end
-      sigma = ssf_bar*sigma;
-      H = H/ssf_bar;
+      sigma_bar = ssf_bar*sigma_bar;
+      H_bar = H_bar/ssf_bar;
     end
   end
   
