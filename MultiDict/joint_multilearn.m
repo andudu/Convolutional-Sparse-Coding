@@ -107,9 +107,9 @@ opt = defaultopts(opt);
 
 % Set up status display for verbose operation
 hstr = ['Itn    Fnc      l1       l1_b      '...
-        'rx       sx      rxb       sxb      rd      sd       rdb      sdb     '];
-sfms = '%4d %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e ';
-nsep = 94;
+        'rx       sx      rxb       sxb      rd      sd       rdb      sdb       rl       sl      '];
+sfms = '%4d %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e ';
+nsep = 145;
 if opt.AutoRho,
   hstr = [hstr ' rho     rhob     '];
   sfms = [sfms ' %5.2e %5.2e '];
@@ -196,8 +196,11 @@ Sf_bar = fft2(S_bar);
 
 % Set up algorithm parameters and initialise variables
 rho = opt.rho;
+delta = opt.delta;
 if isempty(rho), rho = 50*lambda+1; end;
 rho_bar = rho;
+
+
 if opt.AutoRho,
   asgr = opt.RhoRsdlRatio;
   asgm = opt.RhoScaling;
@@ -418,12 +421,13 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
 
   % Solve G G_bar subproblem
   temp = Dr + H; a = temp(:,:,1:end-opt.HighFilterNum); b = temp(:,:,end-opt.HighFilterNum+1:end);
-  G(:,:,1:end-opt.HighFilterNum) = Pzp(Pnrm((PzpT(a)+PzpT(G_bar)-L)/2));
+  G(:,:,1:end-opt.HighFilterNum) = Pzp(Pnrm((PzpT(sigma*(a))+delta*(PzpT(G_bar)-L))/(delta+sigma)));    
   G(:,:,end-opt.HighFilterNum+1:end) = Pcn(b);
   clear temp a b;
   Gf = fft2(G);
   GSf = bsxfun(@times, conj(Gf), Sf);
-  G_bar = Pzp_bar(Pnrm((PzpT(Dr_bar + H_bar)+PzpT(G(:,:,1:end-opt.HighFilterNum))+L)/2));
+  
+  G_bar = Pzp_bar(Pnrm((PzpT(sigma_bar*(Dr_bar + H_bar))+delta*(PzpT(G(:,:,1:end-opt.HighFilterNum))+L))/(delta+sigma)));  
   Gf_bar = fft2(G_bar);
   GSf_bar = bsxfun(@times, conj(Gf_bar), Sf_bar);
   
@@ -437,7 +441,7 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
   % Compute primal and dual residuals and stopping thresholds for D update
   nD = norm(D(:)); nG = norm(G(:)); nH = norm(H(:));  
   nD_bar = norm(D_bar(:)); nG_bar = norm(G_bar(:)); nH_bar = norm(H_bar(:));
-  
+  nL = norm(L(:));
   if opt.StdResiduals,
     % See pp. 19-20 of boyd-2010-distributed
     rd = norm(vec(D - G));
@@ -446,6 +450,8 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
     eduad = sqrt(Nd)*opt.AbsStopTol+sigma*nH*opt.RelStopTol;
     rd_bar = norm(vec(D_bar - G_bar));
     sd_bar = norm(vec(sigma_bar*(Gprv_bar - G_bar)));
+    rl = norm(vec(PzpT(G(:,:,1:end-opt.HighFilterNum))-PzpT(G_bar)));
+    sl = norm(vec(Gprv_bar-G_bar));   
     eprid_bar = sqrt(Nd_bar)*opt.AbsStopTol+max(nD_bar,nG_bar)*opt.RelStopTol;
     eduad_bar = sqrt(Nd_bar)*opt.AbsStopTol+sigma_bar*nH_bar*opt.RelStopTol;
   else
@@ -456,6 +462,8 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
     eduad = sqrt(Nd)*opt.AbsStopTol/(sigma_bar*nH)+opt.RelStopTol;
     rd_bar = norm(vec(D_bar - G_bar))/max(nD_bar,nG_bar);
     sd_bar = norm(vec(Gprv_bar - G_bar))/nH_bar;
+    rl = norm(vec(PzpT(G(:,:,1:end-opt.HighFilterNum))-PzpT(G_bar)))/max(nG,nG_bar);
+    sl = norm(vec(Gprv_bar-G_bar))/nL;
     eprid_bar = sqrt(Nd_bar)*opt.AbsStopTol/max(nD_bar,nG_bar)+opt.RelStopTol;
     eduad_bar = sqrt(Nd_bar)*opt.AbsStopTol/(sigma_bar*nH_bar)+opt.RelStopTol;
   end
@@ -495,7 +503,7 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
   optinf.itstat = [optinf.itstat;...
        [k Jfn Jl1 rx sx rd sd eprix eduax eprid eduad rho sigma tk]];
   if opt.Verbose,
-    dvc = [k,Jfn,Jl1,Jl1_bar, rx, sx,rx_bar,sx_bar, rd, sd,rd_bar,sd_bar];
+    dvc = [k,Jfn,Jl1,Jl1_bar, rx, sx,rx_bar,sx_bar, rd, sd,rd_bar,sd_bar,rl,sl];
     if opt.AutoRho,
       dvc = [dvc rho, rho_bar];
     end
@@ -573,6 +581,23 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
       H_bar = H_bar/ssf_bar;
     end
   end
+
+  if opt.AutoDelta,
+      if k ~= 1 && mod(k, opt.AutoDeltaPeriod) == 0,
+          if opt.AutoDeltaScaling,
+              sigmlt_d = sqrt(rl/sl);
+              if sigmlt_d < 1, sigmlt_d = 1/sigmlt_d; end
+              if sigmlt_d > opt.DeltaScaling, sigmlt_d = opt.DeltaScaling; end
+          else
+              sigmlt_d = opt.DeltaScaling;
+          end
+          ssf = 1;
+          if rl > opt.DeltaRsdlRatio*sl, ssf = sigmlt_d; end
+          if sl > opt.DeltaRsdlRatio*rl, ssf = 1/sigmlt_d; end
+          delta = ssf*delta;
+          L = L/ssf;
+      end
+  end  
   
   k = k + 1;
 
@@ -761,6 +786,25 @@ function opt = defaultopts(opt)
   if ~isfield(opt,'AutoSigmaScaling_bar'),
     opt.AutoSigmaScaling_bar = 0;
   end  
+  
+  if ~isfield(opt,'delta'),
+    opt.delta = .5;
+  end
+  if ~isfield(opt,'AutoDelta'),
+    opt.AutoDelta = 0;
+  end
+  if ~isfield(opt,'AutoDeltaPeriod'),
+    opt.AutoDeltaPeriod = 5;
+  end
+  if ~isfield(opt,'DeltaRsdlRatio'),
+    opt.DeltaRsdlRatio = 10;
+  end
+  if ~isfield(opt,'DeltaScaling'),
+    opt.DeltaScaling = 2;
+  end
+  if ~isfield(opt,'AutoDeltaScaling'),
+    opt.AutoDeltaScaling = 0;
+  end   
   
   if ~isfield(opt,'StdResiduals'),
     opt.StdResiduals = 0;

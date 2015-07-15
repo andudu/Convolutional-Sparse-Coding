@@ -7,7 +7,7 @@ sporco_K = strfind(sporco_p0, '/');
 sporco_p1 = sporco_p0(1:sporco_K(end)-1);
 sporco_sd = {'.', 'Demo', 'DictLearn', 'SparseCode', 'Util','Denoising',...
     'MultiDict','Nofilter','DictLReg','BM3D','BM3D/BM3D-SAPCA',...
-    'BM3D/IDDBM3D','ompbox10','ksvdbox13','ZeroFill','SaltPepper'};
+    'BM3D/IDDBM3D','ompbox10','ksvdbox13','ZeroFill','SaltPepper','1dsignals','PatchComp'};
 for sporco_k=1:length(sporco_sd),
   addpath([sporco_p1 '/' sporco_sd{sporco_k}]);
 end

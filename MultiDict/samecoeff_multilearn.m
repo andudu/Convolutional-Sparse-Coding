@@ -107,7 +107,7 @@ opt = defaultopts(opt);
 hstr = ['Itn    Fnc      l1       l1_b      '...
         'rx       sx      rxb       sxb      rd      sd       rdb      sdb       ry       sy     '];
 sfms = '%4d %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e';
-nsep = 120;
+nsep = 145;
 if opt.AutoRho,
   hstr = [hstr ' rho     rhob     '];
   sfms = [sfms ' %5.2e %5.2e '];
@@ -198,6 +198,7 @@ Sf_bar = fft2(S_bar);
 
 % Set up algorithm parameters and initialise variables
 rho = opt.rho;
+delta = opt.delta;
 if isempty(rho), rho = 50*lambda+1; end;
 rho_bar = rho;
 if opt.AutoRho,
@@ -211,7 +212,6 @@ if opt.AutoSigma,
   asdr = opt.SigmaRsdlRatio;
   asdm = opt.SigmaScaling;
 end
-delta = 1;
 
 optinf = struct('itstat', [], 'opt', opt);
 rx = Inf;
@@ -590,13 +590,13 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
       if opt.AutoDeltaScaling,
         sigmlt_d = sqrt(ry_delta/sy_delta);
         if sigmlt_d < 1, sigmlt_d = 1/sigmlt_d; end
-        if sigmlt_d > opt.DeltaScaling, sigmlt_d = opt.SigmaScaling; end
+        if sigmlt_d > opt.DeltaScaling, sigmlt_d = opt.DeltaScaling; end
       else
         sigmlt_d = opt.DeltaScaling;
       end
       ssf = 1;
-      if ry_delta > opt.SigmaRsdlRatio*sy_delta, ssf = sigmlt_d; end
-      if sy_delta > opt.SigmaRsdlRatio*ry_delta, ssf = 1/sigmlt_d; end
+      if ry_delta > opt.DeltaRsdlRatio*sy_delta, ssf = sigmlt_d; end
+      if sy_delta > opt.DeltaRsdlRatio*ry_delta, ssf = 1/sigmlt_d; end
       delta = ssf*delta;
       L = L/ssf;
     end
@@ -789,13 +789,13 @@ function opt = defaultopts(opt)
   end  
   
   if ~isfield(opt,'delta'),
-    opt.delta = [];
+    opt.delta = .5;
   end
   if ~isfield(opt,'AutoDelta'),
     opt.AutoDelta = 0;
   end
   if ~isfield(opt,'AutoDeltaPeriod'),
-    opt.AutoDeltaPeriod = 10;
+    opt.AutoDeltaPeriod = 5;
   end
   if ~isfield(opt,'DeltaRsdlRatio'),
     opt.DeltaRsdlRatio = 10;
