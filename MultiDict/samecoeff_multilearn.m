@@ -795,7 +795,7 @@ function opt = defaultopts(opt)
     opt.AutoDelta = 0;
   end
   if ~isfield(opt,'AutoDeltaPeriod'),
-    opt.AutoDeltaPeriod = 5;
+    opt.AutoDeltaPeriod = 10;
   end
   if ~isfield(opt,'DeltaRsdlRatio'),
     opt.DeltaRsdlRatio = 10;

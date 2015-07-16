@@ -83,6 +83,8 @@ opt.AutoRho_bar = 1;
 opt.AutoRhoPeriod_bar = 10;
 opt.AutoSigma_bar = 1;
 opt.AutoSigmaPeriod_bar = 10;
+opt.AutoDelta = 1;
+opt.AutoDelta = 10;
 opt.XRelaxParam = 1.4;
 opt.DRelaxParam = 1.4;
 

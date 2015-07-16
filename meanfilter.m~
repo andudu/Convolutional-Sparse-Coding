@@ -1,0 +1,24 @@
+function y = meanfilter(s,stpsz,psz)
+%script for computing mean of each patch and averaging 
+% s is the 2d signal with dimensions nx x ny
+% y is the patch average of the block mean
+% stpsz is the stepsize taken right and down for each patch
+% psz is the patch size
+%(not taking care of boundary cases yet)
+
+nx = size(s,1);
+ny = size(s,2);
+s_div = ones(size(s));
+y = zeros(size(s));
+
+for i = 1:stpsz:nx
+    for j = 1:stpsz:ny
+        i_end = min([i+psz-1,nx]);
+        j_end = min([j+psz-1,ny]);
+        patch_avg = mean(s(i:i_end,j:j_end));
+        s_div(i:i_end,j:j_end) = s_div(i:i_end,j:j_end) + ones(i:i_end,j:j_end);
+        y(i:i_end,j:j_end) = y(i:i_end,j:j_end) + patch_avg;
+    end
+end
+
+
