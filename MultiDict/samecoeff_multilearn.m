@@ -821,7 +821,7 @@ function opt = defaultopts(opt)
     opt.LinSolve = 'SM';
   end
   if ~isfield(opt,'MaxCGIter'),
-    opt.MaxCGIter = 1000;
+    opt.MaxCGIter = 600;
   end
   if ~isfield(opt,'CGTol'),
     opt.CGTol = 1e-3;
