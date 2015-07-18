@@ -103,9 +103,9 @@ opt = defaultopts(opt);
 
 
 % Set up status display for verbose operation
-hstr = ['Itn    Fnc      l1       l1_b      '...
+hstr = ['Itn    Jf1        Jf2       l1       l1_b      '...
         'rx       sx      rxb       sxb      rd      sd       rdb      sdb       ry       sy     '];
-sfms = '%4d %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e';
+sfms = '%4d %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e';
 nsep = 145;
 if opt.AutoRho,
   hstr = [hstr ' rho     rhob     '];
@@ -508,9 +508,9 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
   Y_bar_prev = Y_bar;
 
 
-  % Compute data fidelity term in Fourier domain (note normalisation)
+  % Compute data fidelity term in Fourier domain 
   Jdf = sum(vec(abs(sum(bsxfun(@times,Gf,Yf),3)-Sf).^2))/(2*xsz(1)*xsz(2));
-  Jdf_bar = sum(vec(abs(sum(bsxfun(@times,Gf_bar,Yf_bar),3)-Sf_bar).^2))/(2*xsz_bar(1)*xsz_bar(2));
+  Jdf_bar = beta* sum(vec(abs(sum(bsxfun(@times,Gf_bar,Yf_bar),3)-Sf_bar).^2))/(2*xsz_bar(1)*xsz_bar(2));
   clear Yf Yf_bar;
   Jfn = Jdf +Jdf_bar+ lambda*(Jl1+Jl1_bar);
 
@@ -520,7 +520,7 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
   optinf.itstat = [optinf.itstat;...
        [k Jfn Jl1 rx sx rd sd eprix eduax eprid eduad rho sigma tk]];
   if opt.Verbose,
-    dvc = [k,Jfn,Jl1,Jl1_bar, rx, sx,rx_bar,sx_bar, rd, sd,rd_bar,sd_bar,ry_delta,sy_delta];
+    dvc = [k,Jdf,Jdf_bar,Jl1,Jl1_bar, rx, sx,rx_bar,sx_bar, rd, sd,rd_bar,sd_bar,ry_delta,sy_delta];
     if opt.AutoRho,
       dvc = [dvc rho, rho_bar];
     end
@@ -708,7 +708,7 @@ function opt = defaultopts(opt)
     opt.Verbose = 0;
   end
   if ~isfield(opt,'beta'),
-    opt.beta = 1;
+    opt.beta = 2;
   end
   if ~isfield(opt,'MaxMainIter'),
     opt.MaxMainIter = 1000;
@@ -855,7 +855,7 @@ function opt = defaultopts(opt)
     opt.LinSolve = 'SM';
   end
   if ~isfield(opt,'MaxCGIter'),
-    opt.MaxCGIter = 1000;
+    opt.MaxCGIter = 700;
   end
   if ~isfield(opt,'CGTol'),
     opt.CGTol = 1e-3;
