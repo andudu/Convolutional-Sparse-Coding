@@ -31,6 +31,9 @@ fltlmbd = 5;
 [Sl, Sh] = lowpass(S0, fltlmbd, npd);
 
 % Construct initial dictionary
+D0 = zeros(12,12,numdict, 'single');
+D0(4:9,4:9,:) = single(randn(6,6,numdict));
+
 D0 = zeros(8,8,10, 'single');
 D0(3:6,3:6,:) = single(randn(4,4,10));
 

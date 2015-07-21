@@ -57,59 +57,49 @@ opt.AutoRho = 1;
 opt.AutoRhoPeriod = 10;
 opt.AutoSigma = 1;
 opt.AutoSigmaPeriod = 10;
-% opt.AutoDelta = 1;
-% opt.beta = 3;
-% 
-% %just add a seperate stepsize for all _bar variable
-% opt.AutoRho_bar = 1;
-% opt.AutoRhoPeriod_bar = 10;
-% opt.AutoSigma_bar = 1;
-% opt.AutoSigmaPeriod_bar = 10;
-% opt.AutoDelta = 1;
-% opt.AutoDeltaPeriod = 5;
-% opt.delta = 3;
+opt.AutoDelta = 1;
+opt.beta = 3;
+
+%just add a seperate stepsize for all _bar variable
+opt.AutoRho_bar = 1;
+opt.AutoRhoPeriod_bar = 10;
+opt.AutoSigma_bar = 1;
+opt.AutoSigmaPeriod_bar = 10;
+opt.AutoDelta = 1;
+opt.AutoDeltaPeriod = 5;
+opt.delta = 3;
 opt.XRelaxParam = 1.5;
 opt.DRelaxParam = 1.5;
 opt.LinSolve = 'CG';
 
-z_ind = kron(ones(128,128),[1,0;0,0]);
-
 % Do dictionary learning
 opt.MaxMainIter = 400;
-%[D, D_bar,X,X_bar, optinf] = superres_joint(D0, D0_bar, Sh, Sh1, lambda, opt);
-[D,X,~] = cbpdndliu_zero(D0,Sh, z_ind,lambda,opt);
+[D, D_bar,X,X_bar, optinf] = superres_joint(D0, D0_bar, Sh, Sh1, lambda, opt);
 
-tag = ['Flicker',num2str(image_num),'im',num2str(numdict),'dict','High_zero'];
-% Display high res learned dictionary
+tag = ['Flicker',num2str(image_num),'im',num2str(numdict),'dict','cold2'];
+% Display learned dictionary
 o1.grey =1;
 o1.unifscale =0;
 square_plot(D,o1);
 saveas(gcf,['SuperresJointResults/',tag,'_highresdict'],'fig');
 
-% % Display low res learned dictionary
-% o1.grey =1;
-% o1.unifscale =0;
-% square_plot(D_bar,o1);
-% saveas(gcf,['SuperresJointResults/',tag,'_lowresdict'],'fig');
-
-
+% Display learned dictionary
+o1.grey =1;
+o1.unifscale =0;
+square_plot(D_bar,o1);
+saveas(gcf,['SuperresJointResults/',tag,'_lowresdict'],'fig');
 o1.grey =0;
-a = reshape(sum(abs(X),3),size(X,1),size(X,2),size(X,4));
+a = reshape(sum(abs(X_bar),3),size(X_bar,1),size(X_bar,2),size(X_bar,4));
 square_plot(a,o1);
+
 saveas(gcf,['SuperresJointResults/',tag,'_coeff'],'fig');
 
+square_plot(Sh,o1);
 
-% o1.grey =0;
-% a = reshape(sum(abs(X_bar),3),size(X_bar,1),size(X_bar,2),size(X_bar,4));
-% square_plot(a,o1);
-% saveas(gcf,['SuperresJointResults/',tag,'_coeff'],'fig');
+square_plot(Sh1,o1);
 
-
-% square_plot(Sh,o1);
-% square_plot(Sh1,o1);
-% beta = opt.beta;
-
-save(['SuperresJointResults/',tag,'_dict.mat'],'D','lambda');
+beta = opt.beta;
+save(['SuperresJointResults/',tag,'_dict.mat'],'D','D_bar','beta');
 
 
 

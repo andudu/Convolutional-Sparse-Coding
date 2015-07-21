@@ -18,7 +18,7 @@ tag = '2noise+low1e-1lam2e-1_';
 % s_ref = zeros(size(sn));
 % s = s_ref+sn;
 
-%save('noise_data','s');
+save('noise_data','s');
 
 %lena
 s = single(rgbtogrey(stdimage('lena')))/255;
@@ -35,11 +35,7 @@ s_flat_mean = mean(s_flat,1);
 s1d = bsxfun(@minus, s_flat, s_flat_mean);
 [sl,sh] = lowpass(s,5,16);
 
-a = zeros(imsz,imsz);
-for i = 1:size(s_flat,2)
-   ind = flat2rec(i,imsz,patchSize); 
-   a(ind(1):ind(1)+patchSize-1,ind(2):ind(2)+patchSize-1) =a(ind(1):ind(1)+patchSize-1,ind(2):ind(2)+patchSize-1) + reshape(s_flat(:,i),patchSize,patchSize);
-end
+for i = 1:size(s_flat
 
 
 
