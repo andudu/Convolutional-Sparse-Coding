@@ -8,7 +8,7 @@
 % dwnres = @(x) dnsmpl(smooth(x));
 
 %Training on flicker images
-flicker_ind = [1:1:30];
+flicker_ind = [1:1:10];
 load('Flicker1_512_split.mat');
 S0 = [];
 k = 0;
@@ -36,7 +36,7 @@ fltlmbd = 5;
 [Sl1, Sh1] = lowpass(S1, fltlmbd, npd);
 
 % % Construct initial dictionary
-numdict = 34;
+numdict = 15;
 D0 = zeros(12,12,numdict, 'single');
 D0(4:9,4:9,:) = single(randn(6,6,numdict));
 D0_bar = zeros(6,6,numdict, 'single');
@@ -75,16 +75,16 @@ opt.LinSolve = 'CG';
 z_ind = kron(ones(128,128),[1,0;0,0]);
 
 % Do dictionary learning
-opt.MaxMainIter = 400;
+opt.MaxMainIter = 150;
 %[D, D_bar,X,X_bar, optinf] = superres_joint(D0, D0_bar, Sh, Sh1, lambda, opt);
-[D,X,~] = cbpdndliu_zero(D0,Sh, z_ind,lambda,opt);
+[D_bar,X_bar,~] = cbpdndliu(D0_bar,Sh1,lambda,opt);
 
-tag = ['Flicker',num2str(image_num),'im',num2str(numdict),'dict','High_zero'];
+tag = ['Flicker',num2str(image_num),'im',num2str(numdict),'dict','Low'];
 % Display high res learned dictionary
 o1.grey =1;
 o1.unifscale =0;
 square_plot(D,o1);
-saveas(gcf,['SuperresJointResults/',tag,'_highresdict'],'fig');
+saveas(gcf,['SuperresJointResults/',tag,'_dict'],'fig');
 
 % % Display low res learned dictionary
 % o1.grey =1;
@@ -104,12 +104,12 @@ saveas(gcf,['SuperresJointResults/',tag,'_coeff'],'fig');
 % square_plot(a,o1);
 % saveas(gcf,['SuperresJointResults/',tag,'_coeff'],'fig');
 
-
 % square_plot(Sh,o1);
 % square_plot(Sh1,o1);
 % beta = opt.beta;
 
 save(['SuperresJointResults/',tag,'_dict.mat'],'D','lambda');
+save(['SuperresJointResults/',tag,'_coeff.mat'],'X');
 
 
 

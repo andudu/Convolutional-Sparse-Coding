@@ -7,60 +7,52 @@ s_low = imresize(s_ref,.5);
 
 % Construct initial dictionary
 % Load dictionary
-load('Flicker20im34dictcold_dict.mat');
+load('Flicker20im34dictcold3_dict.mat');
 
-[sh_low,sl_low] = lowpass(
-
+[sl_low,sh_low] = lowpass(s_low,5,15);
+[sl_ref, sh_ref] = lowpass(s_ref,5,15);
 
 opt = [];
 opt.Verbose = 1;
 opt.rho = 150;
 opt.AutoRho = 1;
-opt.AutoRhoPeriod = 10;
+opt.AutoRhoPeriod = 3;
 opt.MaxMainIter =100;
 opt.RelStopTol = 1e-3;
-opt.L1Weight = ones(size(sh));
-opt.L1Weight(box_lu(1):box_rd(1), box_lu(2):box_rd(2)) = 0;
-opt.L1Weight(85:92,:) = 0;
-
-lambda = 1;
-mu = .2;
-g = zeros(size(sh));
-g(box_lu(1):box_rd(1), box_lu(2):box_rd(2))  = 1; %group the box into one 
-g(96:98,:) = 2;
+lambda = .01;
 
 
-[x1,~] = cbpdngrp(D,sh,lambda,mu,g,opt);
-opt.L1Weight = 1;
-lambda = mu; 
-[x2,~] = cbpdn(D,sh,lambda,opt);
+[x2,~] = cbpdn(D_bar,sh_low,lambda,opt);
 
 
 % Visualization
 scnv = @(d,x) ifft2(sum(bsxfun(@times, fft2(d, size(x,1), size(x,2)), ...
                                fft2(x)),3), 'symmetric');
-shrec1 = scnv(D,x1);
-shrec2 = scnv(D,x2);
-srec1 = shrec1;
-srec2 = shrec2;
+
+x = PxT(x2); 
+
+
+                           
+shrec = scnv(D,x);
 
 figure;
-imagesc(srec1);
-title('reconstruction from group norm');
-colorbar;
-
-figure; 
-imagesc(sum3(abs(x1)));
-title('sum of coeff gp norm');
+imagesc(shrec);
+title('superres high');
 colorbar;
 
 figure;
-imagesc(srec2);
-title('reconstruction from L1 norm');
+imagesc(sh_ref);
+title('Original high');
 colorbar;
 
 
-figure; 
-imagesc(sum3(abs(x2)));
-title('sum of coeff L1 norm');
+[~, foo] = lowpass(imresize(s_low,2),4,15);
+figure;
+imagesc(foo);
+title('imresize');
 colorbar;
+
+figure;
+
+
+

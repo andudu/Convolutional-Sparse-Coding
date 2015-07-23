@@ -8,7 +8,7 @@
 % dwnres = @(x) dnsmpl(smooth(x));
 
 %Training on flicker images
-flicker_ind = [1:1:30];
+flicker_ind = [1:1:10];
 load('Flicker1_512_split.mat');
 S0 = [];
 k = 0;
@@ -36,7 +36,7 @@ fltlmbd = 5;
 [Sl1, Sh1] = lowpass(S1, fltlmbd, npd);
 
 % % Construct initial dictionary
-numdict = 34;
+numdict = 15;
 D0 = zeros(12,12,numdict, 'single');
 D0(4:9,4:9,:) = single(randn(6,6,numdict));
 D0_bar = zeros(6,6,numdict, 'single');
@@ -57,49 +57,59 @@ opt.AutoRho = 1;
 opt.AutoRhoPeriod = 10;
 opt.AutoSigma = 1;
 opt.AutoSigmaPeriod = 10;
-opt.AutoDelta = 1;
-opt.beta = 3;
-
-%just add a seperate stepsize for all _bar variable
-opt.AutoRho_bar = 1;
-opt.AutoRhoPeriod_bar = 10;
-opt.AutoSigma_bar = 1;
-opt.AutoSigmaPeriod_bar = 10;
-opt.AutoDelta = 1;
-opt.AutoDeltaPeriod = 5;
-opt.delta = 3;
+% opt.AutoDelta = 1;
+% opt.beta = 3;
+% 
+% %just add a seperate stepsize for all _bar variable
+% opt.AutoRho_bar = 1;
+% opt.AutoRhoPeriod_bar = 10;
+% opt.AutoSigma_bar = 1;
+% opt.AutoSigmaPeriod_bar = 10;
+% opt.AutoDelta = 1;
+% opt.AutoDeltaPeriod = 5;
+% opt.delta = 3;
 opt.XRelaxParam = 1.5;
 opt.DRelaxParam = 1.5;
 opt.LinSolve = 'CG';
 
-% Do dictionary learning
-opt.MaxMainIter = 400;
-[D, D_bar,X,X_bar, optinf] = superres_joint(D0, D0_bar, Sh, Sh1, lambda, opt);
+z_ind = kron(ones(128,128),[1,0;0,0]);
 
-tag = ['Flicker',num2str(image_num),'im',num2str(numdict),'dict','cold2'];
-% Display learned dictionary
+% Do dictionary learning
+opt.MaxMainIter = 150;
+%[D, D_bar,X,X_bar, optinf] = superres_joint(D0, D0_bar, Sh, Sh1, lambda, opt);
+[D_bar,X_bar,~] = cbpdndli(D0_bar,Sh1, z_ind,lambda,opt);
+
+tag = ['Flicker',num2str(image_num),'im',num2str(numdict),'dict','High_zero'];
+% Display high res learned dictionary
 o1.grey =1;
 o1.unifscale =0;
 square_plot(D,o1);
 saveas(gcf,['SuperresJointResults/',tag,'_highresdict'],'fig');
 
-% Display learned dictionary
-o1.grey =1;
-o1.unifscale =0;
-square_plot(D_bar,o1);
-saveas(gcf,['SuperresJointResults/',tag,'_lowresdict'],'fig');
-o1.grey =0;
-a = reshape(sum(abs(X_bar),3),size(X_bar,1),size(X_bar,2),size(X_bar,4));
-square_plot(a,o1);
+% % Display low res learned dictionary
+% o1.grey =1;
+% o1.unifscale =0;
+% square_plot(D_bar,o1);
+% saveas(gcf,['SuperresJointResults/',tag,'_lowresdict'],'fig');
 
+
+o1.grey =0;
+a = reshape(sum(abs(X),3),size(X,1),size(X,2),size(X,4));
+square_plot(a,o1);
 saveas(gcf,['SuperresJointResults/',tag,'_coeff'],'fig');
 
-square_plot(Sh,o1);
 
-square_plot(Sh1,o1);
+% o1.grey =0;
+% a = reshape(sum(abs(X_bar),3),size(X_bar,1),size(X_bar,2),size(X_bar,4));
+% square_plot(a,o1);
+% saveas(gcf,['SuperresJointResults/',tag,'_coeff'],'fig');
 
-beta = opt.beta;
-save(['SuperresJointResults/',tag,'_dict.mat'],'D','D_bar','beta');
+% square_plot(Sh,o1);
+% square_plot(Sh1,o1);
+% beta = opt.beta;
+
+save(['SuperresJointResults/',tag,'_dict.mat'],'D','lambda');
+save(['SuperresJointResults/',tag,'_coeff.mat'],'X');
 
 
 
