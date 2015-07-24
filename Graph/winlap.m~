@@ -1,0 +1,6 @@
+function [ L ] = winlap( im, ind1, ind2, psz )
+%computes the graph laplacian for a given window
+%does not do boundary check
+
+end
+
