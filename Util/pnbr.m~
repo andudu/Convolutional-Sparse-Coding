@@ -1,0 +1,26 @@
+function [ ind ] = pnbr( xind, nsz,psz,imsz )
+% Extract the rectangular index around a pixel neighborhood
+% xind  = (i,j)  position of center 
+% nsz = size of neighborhood (in each direction, e.g. nsz = 2 returns 9 points)
+% imsz = xsz, ysz. use for boundary check. 
+
+nc_max = imsz(2)-psz(2)+1;
+nr_max = imsz(1)-psz(1)+1;
+
+l1 = max(1,xind(1)-nsz); %left most patch
+l2 = min(nc_max,xind(1)+nsz);
+
+r1 = max(1, xind(2)-nsz);
+r2 = min(nr_max,xind(2)+nsz);
+
+a = l1:l2;
+b = r1:r2;
+
+a = a(ones(1,r2-r1+1),:);
+b = repmat(
+
+
+
+
+end
+
