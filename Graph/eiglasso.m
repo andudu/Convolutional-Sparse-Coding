@@ -1,4 +1,4 @@
-function [ Y_bar ] = eiglasso( phi, E, Z,lambda,mu, rho,opt)
+function [ Y_bar,V ] = eiglasso( phi, E, Z,lambda,mu, rho,opt)
 % solve the Lasso problem via eigenvector decomposition
 %         argmin_{Y} (mu/2)Y'LY + (rho/2) ||Y-Z||^2
 %                           lambda \sum_k ||Y||_1

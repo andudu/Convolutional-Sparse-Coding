@@ -204,7 +204,7 @@ while k <= opt.MaxMainIter & (r > epri | s > edua),
      a = Xr+U;
      I1 = Ltemp.ind1(1):Ltemp.ind2(1);
      I2 = Ltemp.ind1(2):Ltemp.ind2(2);
-     [temp,o{i}.V] = eiglasso(Ltemp.phi,Ltemp.E,reshape(a(I1,I2),length(I1)*length(I2) ...
+     [temp,o{i}.V] = eiglasso(Ltemp.phi,Ltemp.E,reshape(a(I1,I2,:),length(I1)*length(I2) ...
      ,size(a,3)),lambda,mu,rho,o{i}); % warm starting
      o{i}.Y_bar = temp;
      temp = reshape(temp,length(I1),length(I2),size(a,3));

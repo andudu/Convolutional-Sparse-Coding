@@ -4,6 +4,7 @@
 
 %clean image lena
 s_ref = single(rgbtogrey(stdimage('lena')))/255;
+s_ref = s_ref+.1*randn(size(s_ref));
 s_ref = imresize(s_ref,.5);
 [sl,sh] = lowpass(s_ref,5,15);
 
@@ -39,12 +40,17 @@ end
 %%%%%%%%%%%%%%% Post Processing %%%%%%%%%%%%%%%%%%%%%%
 x_max = L{end}.ind2(1);
 y_max = L{end}.ind2(2);
-
 scrop = sh(1:x_max,1:y_max);
+sh = scrop;
+sl = sl(1:x_max,1:y_max);
+
+tag = 'noise';
+save(['data_graph_',tag,'.mat'],'L','sh','sl');
+
 
 x = [];
 for i = 1:16
-    temp = L{i}.phi(:,2);
+    temp = L{i}.phi(:,30);
     l1 = L{i}.ind1(1):L{i}.ind2(1);
     r1 = L{i}.ind1(2):L{i}.ind2(2);
     x(:,:,i) = reshape(temp,length(l1),length(r1));

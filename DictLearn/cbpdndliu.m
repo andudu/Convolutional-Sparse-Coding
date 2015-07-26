@@ -403,14 +403,23 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
     end
   end
 
+if k < 50,
+    imdisp(tiledict(PzpT(G)));
+    drawnow;
+else
+    if mod(k,5) == 0,
+       imdisp(tiledict(PzpT(G)));
+       drawnow;
+    end
+end
 
-  k = k + 1;
+k = k + 1;
 
 end
 
 D = PzpT(G);
 
-% Record run time and working variables
+% Record run time and work(ing variables
 optinf.runtime = toc(tstart);
 optinf.Y = Y;
 optinf.U = U;
