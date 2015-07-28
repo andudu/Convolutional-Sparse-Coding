@@ -1,4 +1,4 @@
-function [ L ] = winlap( im, ind1, ind2, psz )
+function [ L ] = winlap( im, ind1, ind2, psz,tau )
 %computes the graph laplacian for a given window
 %does not do boundary checks
 
@@ -10,7 +10,7 @@ s1d = reshape(s1d,size(s1d,1)*size(s1d,2),size(s1d,3));
 
 %%%%%%%%%%%% Computing Graph Laplacian %%%%%%%%%%%%%%%%%%%%%
 A = sqdist(s1d,s1d);
-A = exp(-A/2);
+A = exp(-A/(2*tau));
 for i = 1:size(A,2)
     A(i,i) = 0;
 end

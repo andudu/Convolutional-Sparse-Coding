@@ -1,4 +1,4 @@
-function [L,scrop] = graphgen(sh, wsz, psz,neig)
+function [L,scrop] = graphgen(sh, wsz, psz,neig,tau)
 
 %generate a graph laplacian for each patch with sliding windows
 
@@ -16,7 +16,7 @@ while(ind2(1)<= size(sh,1))
     while(ind2(2)<= size(sh,2))
         L{k}.ind1 = ind1;
         L{k}.ind2 = ind2;
-        a = winlap(sh,ind1,ind2,psz);
+        a = winlap(sh,ind1,ind2,psz,tau);
         [phi,e] = eigs(a,neig,'sr');
         e = diag(e);
         L{k}.phi = phi;

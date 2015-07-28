@@ -1,37 +1,32 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%  Load  Data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %load a saved noise
-%load('noise_data.mat');
-%snoise = s;
-snoise = randn(256,256)*.1;
+load('noise_data.mat');
+snoise = s;
+% snoise = randn(256,256)*.1;
 sref = single(stdimage('lena.grey')) / 255;
 sref = imresize(sref,.5);
 s = sref+snoise;
-wsz = [20,20];
-psz = [12,12];
+wsz = [60,60];
+psz = [8,8];
 neig = 30;
 [sl,sh] = lowpass(s,5,15);
-tau = 2;
-[L,sh] = graphgen(sh,wsz,psz,neig,tau);
+[L,sh] = graphgen(sh,wsz,psz,neig);
 disp('graph generated');
 sl = sl(1:size(sh,1),1:size(sh,2));
-
-sref = sref(1:size(sh,1),1:size(sh,2));
-
-[~,shref] = lowpass(sref,5,15);
 
 
 % Load dictionary
 load([sporco_path '/Data/ConvDict.mat']);
 dmap = containers.Map(ConvDict.Label, ConvDict.Dict);
-D = dmap('12x12x36');
+D = dmap('8x8x32');
 
 
 
 %%%%%%%%%%%%%%%%%%%%%%% set up parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-mu = 3.5;
-lambda = 0.03;
+mu = .6;
+lambda = 0.15;
 opt = {};
 opt.Verbose = 0;
 opt.MaxMainIter = 500;
@@ -39,15 +34,14 @@ opt.rho = 100*lambda + 1;
 opt.RelStopTol = 1e-3;
 opt.AuxVarObj = 0;
 opt.HighMemSolve = 1;
-% load('wy.mat');
-% y = 3*exp(-2*y);
-%opt.L1Weight = repmat(y,[1,1,32]);
-opt.L1Weight = 1;
+load('wy.mat');
+y = exp
+opt.L1Weight = repmat(y,[1,1,32]);
+
 %optimize
 [Xnl,~]= cbpdn_L(D,sh,L,lambda,mu,opt);
 disp('nl opt');
 
-lambda = 0.3;
 [Xcn,~] = cbpdn(D,sh,lambda,opt);
 disp('cbpdn');
 
@@ -61,6 +55,7 @@ shreccn = scnv(D,Xcn);
 srecnl = shrecnl+sl;
 sreccn = shreccn+sl;
 
+sref = sref(1:size(sh,1),1:size(sh,2));
 
 p = psnr(srecnl,sref);
 disp(['psnr from nonlocal: ',num2str(p)]);
@@ -71,38 +66,32 @@ disp(['psnr from cbpdn: ',num2str(p1)]);
 figure; 
 imagesc(srecnl);
 title(['nonlocal psnr = ',num2str(p)]);
-colormap(gray);
 colorbar;
 
 figure; 
 imagesc(sreccn);
 title(['cbpdn psnr = ',num2str(p1)]);
-colormap(gray);
 colorbar;
 
 figure; 
 imagesc(shrecnl);
 title(['nonlocal sh']);
-colormap(gray);
 colorbar;
 
 
 figure; 
 imagesc(shreccn);
 title(['cbpdn sh']);
-colormap(gray);
 colorbar;
 
 figure; 
 imagesc(sum3(Xnl));
 title(['nonlocal coeff']);
-colormap(gray);
 colorbar;
 
 figure; 
 imagesc(sum3(Xcn));
 title(['cbpdn coeff']);
-colormap(gray);
 colorbar;
 
 
