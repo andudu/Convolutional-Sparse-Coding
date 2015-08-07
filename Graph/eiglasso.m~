@@ -1,4 +1,4 @@
-function [ Y_bar,V,optinf ] = eiglasso( phi, E, Z,lambda,mu, rho,opt)
+function [ Y_bar,V ] = eiglasso( phi, E, Z,lambda,mu, rho,opt)
 % solve the Lasso problem via eigenvector decomposition
 %         argmin_{Y} (mu/2)Y'LY + (rho/2) ||Y-Z||^2
 %                           lambda \sum_k ||Y||_1
@@ -24,8 +24,6 @@ else
 end
 
 flag = 0;
-
-optinf = [];
 if(opt.verbose == 1)
     hstr = 'Itn   Fnc       DFid      l1        r         s    ';
     sfms = '%4d %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e';
@@ -43,7 +41,7 @@ A_hat = phi'*A;
 A_par = phi*A_hat; %project Z onto nontrivial eigenspace
 A_perp = A-A_par; %perpendicular part
 
-while (k< opt.MaxMainIter)
+while (k< opt.Maxiter)
     Y_par_hat = bsxfun(@rdivide,A_hat,(mu*E+2*rho))*2*rho; % Y_par update
     Y = phi*Y_par_hat + (2*rho/(mu+2*rho))*A_perp;
     Y_bar = shrink(Y + V, lambda/rho);
@@ -62,10 +60,11 @@ while (k< opt.MaxMainIter)
         s = norm(vec(rho*(Y_bar_prv - Y_bar)));
         disp(sprintf(sfms, k, Jfn, Jdf, Jl1, r, s));    
         Y_bar_prv = Y_bar;
-        optinf.Jfn(k) = Jfn;
     end
 
 end
+
+
 
 
 end

@@ -1,26 +1,42 @@
-%script for testing the block mini lasso solver
+%script for testing the mini lasso solver
 
 
 %random test data
-n = 500; neig = 50;
+n = 400; neig = 400;
 temp = randn(n,n);
 temp = temp'*temp;
 [phi,E] = eigs(temp,neig,'sr');
 E = randn(size(E,1),1);
+Z = rand(size(phi,1),60);
+L = phi*diag(E)*phi';
 
 opt.Y_bar = [];
 opt.V = [];
-opt.Maxiter = 50;
+opt.MaxMainIter = 50;
 opt.verbose = 1;
-Z = rand(size(phi,1),50);
 lambda = .1;
 mu = .1;
 rho = 1;
 
-Y_bar = eiglasso( phi, E, Z,lambda,mu, rho,opt);
+tic;
+[Y_bar,V,o1] = eiglasso( phi, E, Z,lambda,mu, rho,opt);
+toc;
 
-Y2 = shrink(Z,lambda/rho);
+opt1.Y = [];
+opt1.eta = 1.2;
+opt1.MaxMainIter = 50;
+opt1.verbose = 1;
+opt1.L1Weight = 1;
+lambda = .1;
 
-norm(vec(Y2-Y_bar))/norm(vec(Y2))
+tic;
+[Y, o2] = lasso_fista(L,Z,lambda,mu,rho,opt1);
+toc;
 
+norm(vec(Y-Y_bar))/norm(vec(Y))
+
+plot(log(o1.Jfn-min(o1.Jfn)),'r');
+hold on;
+plot(log(o2.Jfn-min(o2.Jfn)),'b');
+hold off;
 

@@ -1,7 +1,6 @@
 function [D, D_bar, Y, Y_bar, optinf] = superres_joint(D0, D0_bar,S,S_bar, lambda, opt)
 
-% SameCoeff_multilearn -- forcing spatial coefficient to be the same.
-% Doing super Resolution stuff. 
+% superres_joint -- Super Resolution Dictionary Learning by forcing spatial coefficient
 %
 %         The solution is computed using Augmented Lagrangian methods
 %         (see boyd-2010-distributed) with efficient solution of the 
@@ -12,8 +11,8 @@ function [D, D_bar, Y, Y_bar, optinf] = superres_joint(D0, D0_bar,S,S_bar, lambd
 %
 % Input:
 %       D0          Initial dictionary for coarse&fine level, 
-%       S           Input images of higher resolution 2*sz(S_bar)
-%       S_bar       Input images of lower resolution / of different size
+%       S           Input images of higher resolution and size (e.g. 512 x 512)
+%       S_bar       Input images of lower resolution and size (e.g. 256 x 256)
 %       lambda      Regularization parameter
 %       opt         Options/algorithm parameters structure (see below)
 %

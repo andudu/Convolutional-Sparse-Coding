@@ -11,7 +11,7 @@ wsz = [20,20];
 psz = [12,12];
 neig = 30;
 [sl,sh] = lowpass(s,5,15);
-tau = 2;
+tau = 6;
 [L,sh] = graphgen(sh,wsz,psz,neig,tau);
 disp('graph generated');
 sl = sl(1:size(sh,1),1:size(sh,2));
@@ -30,8 +30,8 @@ D = dmap('12x12x36');
 
 %%%%%%%%%%%%%%%%%%%%%%% set up parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-mu = 3.5;
-lambda = 0.03;
+mu = 1;
+lambda = 0.25;
 opt = {};
 opt.Verbose = 0;
 opt.MaxMainIter = 500;
@@ -47,7 +47,6 @@ opt.L1Weight = 1;
 [Xnl,~]= cbpdn_L(D,sh,L,lambda,mu,opt);
 disp('nl opt');
 
-lambda = 0.3;
 [Xcn,~] = cbpdn(D,sh,lambda,opt);
 disp('cbpdn');
 

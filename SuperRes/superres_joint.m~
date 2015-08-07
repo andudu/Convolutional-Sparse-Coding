@@ -1,30 +1,31 @@
-function [D, Y, Y_bar, optinf] = varsplit_multilearn(D0, S,S_bar, lambda, opt)
+function [D, D_bar, Y, Y_bar, optinf] = superres_joint(D0, D0_bar,S,S_bar, lambda, opt)
 
-% varsplit_multilearn -- Convolutional BPDN Dictionary Learning (Interleaved Update)
-%   Learn the same dictionary from two sets of images S,S_bar via admm
-%         argmin_{x_k,d_k} (1/2)||\sum_k h_k * x_k - s||_2^2 +
-%                           lambda \sum_k ||x_k||_1
+% superres_joint -- Super Resolution Dictionary Learning by forcing 
 %
 %         The solution is computed using Augmented Lagrangian methods
 %         (see boyd-2010-distributed) with efficient solution of the 
 %         main linear systems (see wohlberg-2014-efficient).
 %
+% Usage:
+%       [D, X, optinf] = cbpdndliu(D0, S, lambda, opt)
 %
 % Input:
-%       D0          Initial dictionary
-%       S           Input images of larger size
-%       S_bar       Input images of smaller size
+%       D0          Initial dictionary for coarse&fine level, 
+%       S           Input images of higher resolution 2*sz(S_bar)
+%       S_bar       Input images of lower resolution / of different size
 %       lambda      Regularization parameter
 %       opt         Options/algorithm parameters structure (see below)
 %
 % Output:
-%       D           Jointly Learned Dictionary filter set (3D array)
+%       D           High Res dictionary  size 2n x 2n
+%       D_bar       Low Res dictionary   size n x n
 %       Y           Larger Coefficient maps (3D array)
 %       Y_bar       Smaller Coefficient maps (3D array)
 %       optinf      Details of optimisation
 %
 %
 % Options structure fields:
+%   Beta             Parameter for weighing the smaller image
 %   Verbose          Flag determining whether iteration status is
 %   displayed.
 %                    Fields are iteration number, functional value,
@@ -92,8 +93,7 @@ function [D, Y, Y_bar, optinf] = varsplit_multilearn(D0, S,S_bar, lambda, opt)
 % and user license can be found in the 'Copyright' and 'License' files
 % distributed with the library.
 
-
-if nargin < 5,
+if nargin < 6,
   opt = [];
 end
 checkopt(opt, defaultopts([]));
@@ -101,11 +101,10 @@ opt = defaultopts(opt);
 
 
 
-
 % Set up status display for verbose operation
-hstr = ['Itn    Fnc      l1       l1_b      '...
-        'rx       sx      rxb       sxb      rd      sd       rdb      sdb       rl       sl      '];
-sfms = '%4d %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e ';
+hstr = ['Itn    Jf1        Jf2       l1       l1_b      '...
+        'rx       sx      rxb       sxb      rd      sd       rdb      sdb       ry       sy     '];
+sfms = '%4d %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e';
 nsep = 145;
 if opt.AutoRho,
   hstr = [hstr ' rho     rhob     '];
@@ -113,14 +112,21 @@ if opt.AutoRho,
   nsep = nsep + 10;
 end
 if opt.AutoSigma,
-  hstr = [hstr 'sig       sigb'];
+  hstr = [hstr 'sig       sigb      '];
   sfms = [sfms ' %5.2e %5.2e'];
+  nsep = nsep + 10;
+end
+if opt.AutoDelta,
+  hstr = [hstr 'del     '];
+  sfms = [sfms ' %5.2e'];
   nsep = nsep + 10;
 end
 if opt.Verbose && opt.MaxMainIter > 0,
   disp(hstr);
   disp(char('-' * ones(1,nsep)));
 end
+
+
 
 % Collapsing of trailing singleton dimensions greatly complicates
 % handling of both SMV and MMV cases. The simplest approach would be
@@ -152,8 +158,10 @@ cgt = opt.CGTol;
 % dictionary
 if isempty(opt.DictFilterSizes),
   dsz = [size(D0,1) size(D0,2)];
+  dsz_bar = [size(D0_bar,1) size(D0_bar,2)];
 else
   dsz = opt.DictFilterSizes;
+  dsz_bar = opt.DictFilterSizes/2;
 end
 
 % Mean removal and normalisation projections
@@ -164,7 +172,9 @@ Pnrm = @(x) bsxfun(@rdivide, x, sqrt(sum(sum(x.^2, 1), 2)));
 % (zero-pad and crop respectively)
 Pzp = @(x) zpad(x, xsz(1:2));
 PzpT = @(x) bcrop(x, dsz);
+PzpT_bar = @(x) bcrop(x,dsz_bar);
 Pzp_bar = @(x) zpad(x, xsz_bar(1:2));
+
 
 % Projection of dictionary filters onto constraint set
 if opt.ZeroMean,
@@ -174,9 +184,9 @@ else
 end
 
 if opt.ZeroMean,
-  Pcn_bar = @(x) Pnrm(Pzp_bar(Pzmn(PzpT(x))));
+  Pcn_bar = @(x) Pnrm(Pzp_bar(Pzmn(PzpT_bar(x))));
 else
-  Pcn_bar = @(x) Pnrm(Pzp_bar(PzpT(x)));
+  Pcn_bar = @(x) Pnrm(Pzp_bar(PzpT_bar(x)));
 end
 
 
@@ -185,6 +195,7 @@ tstart = tic;
 
 % Project initial dictionary onto constraint set
 D = Pnrm(D0);
+D_bar = Pnrm (D0_bar);
 
 % Compute signal in DFT domain
 Sf = fft2(S);
@@ -192,9 +203,7 @@ Sf_bar = fft2(S_bar);
 
 % Set up algorithm parameters and initialise variables
 rho = opt.rho;
-
 delta = opt.delta;
-
 if isempty(rho), rho = 50*lambda+1; end;
 rho_bar = rho;
 if opt.AutoRho,
@@ -208,6 +217,7 @@ if opt.AutoSigma,
   asdr = opt.SigmaRsdlRatio;
   asdm = opt.SigmaScaling;
 end
+
 optinf = struct('itstat', [], 'opt', opt);
 rx = Inf;
 sx = Inf;
@@ -233,7 +243,7 @@ X = [];
 X_bar = [];
 
 %additional dual variable L
-L = zeros(size(D));
+L = zeros(xsz_bar);
 
 if isempty(opt.Y0), %initialize Y
   Y = zeros(xsz, class(S));
@@ -271,7 +281,7 @@ end
 
 Df_bar = []; %G_bar
 if isempty(opt.G0_bar),
-  G_bar = Pzp_bar(D);
+  G_bar = Pzp_bar(D_bar);
 else
   G_bar = opt.G0_bar;
 end
@@ -307,11 +317,19 @@ end
 Gf = fft2(G, size(S,1), size(S,2));
 GSf = bsxfun(@times, conj(Gf), Sf);
 
-
+%cropping matrix for Z
+Zcrop = zeros(xsz);
+for i = 1:xsz(3)
+    for j = 1:xsz(4)
+        Zcrop(:,:,i,j) = kron(ones(xsz_bar(1:2)),[1,0;0,0]);
+    end
+end
 
 
 % Main loop
 k = 1;
+beta = opt.beta; %weigh the lower res fidelity some more
+
 while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
    (rx_bar > eprix_bar|sx_bar > eduax_bar|rd_bar > eprid_bar|sd_bar >eduad_bar))     
 
@@ -323,7 +341,7 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
   X = ifft2(Xf, 'symmetric');
   clear Xf Gf GSf;
 
-  Xf_bar = solvedbi_sm(Gf_bar, rho_bar, GSf_bar + rho_bar*fft2(Y_bar - U_bar));
+  Xf_bar = solvedbi_sm(Gf_bar, rho_bar/beta, GSf_bar + (rho_bar/beta)*fft2(Y_bar - U_bar));
   X_bar = ifft2(Xf_bar, 'symmetric');
   clear Xf_bar Gf_bar GSf_bar;  
   
@@ -336,10 +354,11 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
     Xr_bar = opt.XRelaxParam*X_bar + (1-opt.XRelaxParam)*Y_bar;
   end
 
-  % Solve Y subproblem
-  Y = shrink(Xr + U, (lambda/rho)*opt.L1Weight);
-  Y_bar = shrink(Xr_bar + U_bar, (lambda/rho_bar)*opt.L1Weight); %set fixed for now
-  %crop the Y's according to size. 
+  % Solve Y Y_bar subproblem
+  temp = Xr+U; temp2 = Px(temp); 
+  Ytemp = shrink((rho*(temp2)+delta*(Y_bar-L))/(rho+delta), (lambda/(rho+delta))*opt.L1Weight);
+  Y = PxT(Ytemp); clear temp temp2; %set coefficients to 0;
+  Y_bar = shrink((rho_bar*(Xr_bar + U_bar)+delta*(Ytemp+L))/(rho+delta), (lambda/(rho_bar+delta))*opt.L1Weight); %set fixed for now
   
   if opt.NoBndryCross, %ignore this stuff for now
     Y((end-size(D,1)+2):end,:,:,:) = 0;
@@ -354,11 +373,13 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
   % Update dual variable corresponding to X, Y
   U = U + Xr - Y;
   U_bar = U_bar+Xr_bar-Y_bar;
-  clear Xr Xr_bar;
+  L = L+Ytemp-Y_bar;
+  clear Xr Xr_bar ;
 
   % Compute primal and dual residuals and stopping thresholds for X update
   nX = norm(X(:)); nY = norm(Y(:)); nU = norm(U(:));
   nX_bar = norm(X_bar(:)); nY_bar = norm(Y_bar(:)); nU_bar = norm(U_bar(:));
+  nL = norm(L(:)); 
   if opt.StdResiduals,
     % See pp. 19-20 of boyd-2010-distributed
     rx = norm(vec(X - Y));
@@ -369,6 +390,8 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
     sx_bar = norm(vec(rho_bar*(Yprv_bar - Y_bar)));
     eprix_bar = sqrt(Nx_bar)*opt.AbsStopTol+max(nX_bar,nY_bar)*opt.RelStopTol;
     eduax_bar = sqrt(Nx_bar)*opt.AbsStopTol+rho_bar*nU*opt.RelStopTol;
+    ry_delta = norm(vec(Ytemp-Y_bar));
+    sy_delta = norm(vec(delta*(Y_bar_prev-Y_bar)));
   else
     % See wohlberg-2015-adaptive
     rx = norm(vec(X - Y))/max(nX,nY);
@@ -379,8 +402,10 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
     sx_bar = norm(vec(Yprv_bar - Y_bar))/nU_bar;
     eprix_bar = sqrt(Nx_bar)*opt.AbsStopTol/max(nX_bar,nY_bar)+opt.RelStopTol;
     eduax_bar = sqrt(Nx_bar)*opt.AbsStopTol/(rho*nU)+opt.RelStopTol;
+    ry_delta = norm(vec(Ytemp-Y_bar))/max(nY,nY_bar);
+    sy_delta = norm(vec(delta*(Yprv_bar-Y_bar)))/nL;
   end
-  clear X;
+  clear X Ytemp;
 
   % Compute l1 norm of Y
   Jl1 = sum(abs(vec(opt.L1Weight .* Y)));
@@ -396,10 +421,13 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
   % but it appears to be more stable to use the shrunk coefficient variable Y
   if strcmp(opt.LinSolve, 'SM'),
     Df = solvemdbi_ism(Yf, sigma, YSf + sigma*fft2(G - H));
-    Df_bar = solvemdbi_ism(Yf_bar, sigma_bar, YSf_bar + sigma_bar*fft2(G_bar - H_bar));
+    Df_bar = solvemdbi_ism(Yf_bar, sigma_bar/beta, YSf_bar + (sigma_bar/beta)*fft2(G_bar - H_bar));
   else
-    [Df, cgst] = solvemdbi_cg(Yf, sigma_bar, YSf + sigma_bar*fft2(G - H), ...
-                              cgt, opt.MaxCGIter, Df(:)); %ignore this too
+    [Df, ~] = solvemdbi_cg(Yf, sigma, YSf + sigma*fft2(G - H), ...
+                              cgt, opt.MaxCGIter, Df(:)); 
+    [Df_bar, ~] = solvemdbi_cg(Yf_bar, sigma_bar/beta, YSf_bar + (sigma_bar/beta)*fft2(G_bar - H_bar), ...
+                              cgt, opt.MaxCGIter, Df_bar(:));                           
+                         
   end
   %clear YSf YSf_bar;
   D = ifft2(Df, 'symmetric');
@@ -415,24 +443,24 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
     Dr_bar = opt.DRelaxParam*D_bar + (1-opt.DRelaxParam)*G_bar;
   end
 
+    
   % Solve G G_bar subproblem
-  G = Pzp(Pnrm((PzpT(sigma*(Dr + H))+delta*(PzpT(G_bar)-L))/(delta+sigma)));
+  G = Pcn(Dr + H);
   Gf = fft2(G);
   GSf = bsxfun(@times, conj(Gf), Sf);
-  G_bar = Pzp_bar(Pnrm((PzpT(sigma_bar*(Dr_bar + H_bar))+delta*(PzpT(G)+L))/(delta+sigma)));
+  G_bar = Pcn_bar(Dr_bar+H_bar);
   Gf_bar = fft2(G_bar);
   GSf_bar = bsxfun(@times, conj(Gf_bar), Sf_bar);
   
   % Update dual variable corresponding to D, G
   H = H + Dr - G;
   H_bar = H_bar + Dr_bar - G_bar;
-  L = L+PzpT(G)-PzpT(G_bar);
   clear Dr Dr_bar;
 
   % Compute primal and dual residuals and stopping thresholds for D update
   nD = norm(D(:)); nG = norm(G(:)); nH = norm(H(:));  
   nD_bar = norm(D_bar(:)); nG_bar = norm(G_bar(:)); nH_bar = norm(H_bar(:));
-  nL = norm(L(:));
+  
   if opt.StdResiduals,
     % See pp. 19-20 of boyd-2010-distributed
     rd = norm(vec(D - G));
@@ -441,8 +469,6 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
     eduad = sqrt(Nd)*opt.AbsStopTol+sigma*nH*opt.RelStopTol;
     rd_bar = norm(vec(D_bar - G_bar));
     sd_bar = norm(vec(sigma_bar*(Gprv_bar - G_bar)));
-    rl = norm(vec(PzpT(G)-PzpT(G_bar)));
-    sl = norm(vec(Gprv_bar-G_bar));   
     eprid_bar = sqrt(Nd_bar)*opt.AbsStopTol+max(nD_bar,nG_bar)*opt.RelStopTol;
     eduad_bar = sqrt(Nd_bar)*opt.AbsStopTol+sigma_bar*nH_bar*opt.RelStopTol;
   else
@@ -455,8 +481,6 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
     sd_bar = norm(vec(Gprv_bar - G_bar))/nH_bar;
     eprid_bar = sqrt(Nd_bar)*opt.AbsStopTol/max(nD_bar,nG_bar)+opt.RelStopTol;
     eduad_bar = sqrt(Nd_bar)*opt.AbsStopTol/(sigma_bar*nH_bar)+opt.RelStopTol;
-    rl = norm(vec(PzpT(G)-PzpT(G_bar)))/max(nG,nG_bar);
-    sl = norm(vec(Gprv_bar-G_bar))/nL;
   end
 
 %   %max pooling the residuals(how to do that properly? This is not good)
@@ -480,11 +504,12 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
   % Update record of previous step G
   Gprv = G;
   Gprv_bar = G_bar;
+  Y_bar_prev = Y_bar;
 
 
-  % Compute data fidelity term in Fourier domain (note normalisation)
+  % Compute data fidelity term in Fourier domain 
   Jdf = sum(vec(abs(sum(bsxfun(@times,Gf,Yf),3)-Sf).^2))/(2*xsz(1)*xsz(2));
-  Jdf_bar = sum(vec(abs(sum(bsxfun(@times,Gf_bar,Yf_bar),3)-Sf_bar).^2))/(2*xsz_bar(1)*xsz_bar(2));
+  Jdf_bar = beta* sum(vec(abs(sum(bsxfun(@times,Gf_bar,Yf_bar),3)-Sf_bar).^2))/(2*xsz_bar(1)*xsz_bar(2));
   clear Yf Yf_bar;
   Jfn = Jdf +Jdf_bar+ lambda*(Jl1+Jl1_bar);
 
@@ -494,12 +519,15 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
   optinf.itstat = [optinf.itstat;...
        [k Jfn Jl1 rx sx rd sd eprix eduax eprid eduad rho sigma tk]];
   if opt.Verbose,
-    dvc = [k,Jfn,Jl1,Jl1_bar, rx, sx,rx_bar,sx_bar, rd, sd,rd_bar,sd_bar,rl,sl];
+    dvc = [k,Jdf,Jdf_bar,Jl1,Jl1_bar, rx, sx,rx_bar,sx_bar, rd, sd,rd_bar,sd_bar,ry_delta,sy_delta];
     if opt.AutoRho,
       dvc = [dvc rho, rho_bar];
     end
     if opt.AutoSigma,
       dvc = [dvc sigma, sigma_bar];
+    end
+    if opt.AutoDelta,
+      dvc = [dvc delta];
     end
     disp(sprintf(sfms, dvc));
   end
@@ -555,24 +583,6 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
       H = H/ssf;
     end
   end
-  
-  
-  if opt.AutoDelta,
-      if k ~= 1 && mod(k, opt.AutoDeltaPeriod) == 0,
-          if opt.AutoDeltaScaling,
-              sigmlt_d = sqrt(rl/sl);
-              if sigmlt_d < 1, sigmlt_d = 1/sigmlt_d; end
-              if sigmlt_d > opt.DeltaScaling, sigmlt_d = opt.DeltaScaling; end
-          else
-              sigmlt_d = opt.DeltaScaling;
-          end
-          ssf = 1;
-          if rl > opt.DeltaRsdlRatio*sl, ssf = sigmlt_d; end
-          if sl > opt.DeltaRsdlRatio*rl, ssf = 1/sigmlt_d; end
-          delta = ssf*delta;
-          L = L/ssf;
-      end
-  end
 
   if opt.AutoSigma_bar,
     if k ~= 1 && mod(k, opt.AutoSigmaPeriod_bar) == 0,
@@ -590,12 +600,31 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
       H_bar = H_bar/ssf_bar;
     end
   end
+
+  
+  if opt.AutoDelta,
+    if k ~= 1 && mod(k, opt.AutoDeltaPeriod) == 0,
+      if opt.AutoDeltaScaling,
+        sigmlt_d = sqrt(ry_delta/sy_delta);
+        if sigmlt_d < 1, sigmlt_d = 1/sigmlt_d; end
+        if sigmlt_d > opt.DeltaScaling, sigmlt_d = opt.DeltaScaling; end
+      else
+        sigmlt_d = opt.DeltaScaling;
+      end
+      ssf = 1;
+      if ry_delta > opt.DeltaRsdlRatio*sy_delta, ssf = sigmlt_d; end
+      if sy_delta > opt.DeltaRsdlRatio*ry_delta, ssf = 1/sigmlt_d; end
+      delta = ssf*delta;
+      L = L/ssf;
+    end
+  end  
   
   k = k + 1;
 
 end
 
-D = PzpT(G_bar);
+D = PzpT(G);
+D_bar = PzpT_bar(G_bar);
 
 % Record run time and working variables
 optinf.runtime = toc(tstart);
@@ -637,6 +666,19 @@ function u = zpad(v, sz)
 
 return
 
+% Projection between x and 
+function y  = Px(A) 
+y = A(1:2:end-1, 1:2:end-1,:,:);
+return 
+
+function y = PxT(A)
+y = zeros(2*size(A,1),2*size(A,2),size(A,3),size(A,4));
+for i = 1:size(A,3)
+    for j = 1:size(A,4)
+        y(:,:,i,j) = kron(A(:,:,i,j),[1,0;0,0]);
+    end
+end
+return
 
 function u = bcrop(v, sz)
 
@@ -663,6 +705,9 @@ function opt = defaultopts(opt)
 
   if ~isfield(opt,'Verbose'),
     opt.Verbose = 0;
+  end
+  if ~isfield(opt,'beta'),
+    opt.beta = 1;
   end
   if ~isfield(opt,'MaxMainIter'),
     opt.MaxMainIter = 1000;
@@ -776,15 +821,14 @@ function opt = defaultopts(opt)
     opt.AutoSigmaScaling_bar = 0;
   end  
   
-  
   if ~isfield(opt,'delta'),
-    opt.delta = .5;
+    opt.delta = 3;
   end
   if ~isfield(opt,'AutoDelta'),
     opt.AutoDelta = 0;
   end
   if ~isfield(opt,'AutoDeltaPeriod'),
-    opt.AutoDeltaPeriod = 5;
+    opt.AutoDeltaPeriod = 10;
   end
   if ~isfield(opt,'DeltaRsdlRatio'),
     opt.DeltaRsdlRatio = 10;
@@ -794,7 +838,7 @@ function opt = defaultopts(opt)
   end
   if ~isfield(opt,'AutoDeltaScaling'),
     opt.AutoDeltaScaling = 0;
-  end  
+  end    
   
   
   if ~isfield(opt,'StdResiduals'),
@@ -810,7 +854,7 @@ function opt = defaultopts(opt)
     opt.LinSolve = 'SM';
   end
   if ~isfield(opt,'MaxCGIter'),
-    opt.MaxCGIter = 1000;
+    opt.MaxCGIter = 700;
   end
   if ~isfield(opt,'CGTol'),
     opt.CGTol = 1e-3;

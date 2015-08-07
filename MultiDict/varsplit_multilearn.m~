@@ -1,7 +1,7 @@
 function [D, Y, Y_bar, optinf] = varsplit_multilearn(D0, S,S_bar, lambda, opt)
 
 % varsplit_multilearn -- Convolutional BPDN Dictionary Learning (Interleaved Update)
-%   2 sets of levels at this point
+%   Learn the same dictionary from two sets of images S,S_bar via admm
 %         argmin_{x_k,d_k} (1/2)||\sum_k h_k * x_k - s||_2^2 +
 %                           lambda \sum_k ||x_k||_1
 %
@@ -108,7 +108,7 @@ opt = defaultopts(opt);
 hstr = ['Itn    Fnc      l1       l1_b      '...
         'rx       sx      rxb       sxb      rd      sd       rdb      sdb       rl       sl      '];
 sfms = '%4d %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e %5.2e ';
-nsep = 124;
+nsep = 145;
 if opt.AutoRho,
   hstr = [hstr ' rho     rhob     '];
   sfms = [sfms ' %5.2e %5.2e '];
@@ -195,8 +195,7 @@ Sf_bar = fft2(S_bar);
 % Set up algorithm parameters and initialise variables
 rho = opt.rho;
 
-%temporary placeholder for delta
-delta = 1;
+delta = opt.delta;
 
 if isempty(rho), rho = 50*lambda+1; end;
 rho_bar = rho;
@@ -558,6 +557,24 @@ while k <= opt.MaxMainIter & ((rx > eprix|sx > eduax|rd > eprid|sd >eduad)|...
       H = H/ssf;
     end
   end
+  
+  
+  if opt.AutoDelta,
+      if k ~= 1 && mod(k, opt.AutoDeltaPeriod) == 0,
+          if opt.AutoDeltaScaling,
+              sigmlt_d = sqrt(rl/sl);
+              if sigmlt_d < 1, sigmlt_d = 1/sigmlt_d; end
+              if sigmlt_d > opt.DeltaScaling, sigmlt_d = opt.DeltaScaling; end
+          else
+              sigmlt_d = opt.DeltaScaling;
+          end
+          ssf = 1;
+          if rl > opt.DeltaRsdlRatio*sl, ssf = sigmlt_d; end
+          if sl > opt.DeltaRsdlRatio*rl, ssf = 1/sigmlt_d; end
+          delta = ssf*delta;
+          L = L/ssf;
+      end
+  end
 
   if opt.AutoSigma_bar,
     if k ~= 1 && mod(k, opt.AutoSigmaPeriod_bar) == 0,
@@ -766,19 +783,19 @@ function opt = defaultopts(opt)
     opt.delta = .5;
   end
   if ~isfield(opt,'AutoDelta'),
-    opt.AutoSigma_bar = 0;
+    opt.AutoDelta = 0;
   end
-  if ~isfield(opt,'AutoSigmaPeriod_bar'),
-    opt.AutoSigmaPeriod_bar = 10;
+  if ~isfield(opt,'AutoDeltaPeriod'),
+    opt.AutoDeltaPeriod = 5;
   end
-  if ~isfield(opt,'SigmaRsdlRatio_bar'),
-    opt.SigmaRsdlRatio_bar = 10;
+  if ~isfield(opt,'DeltaRsdlRatio'),
+    opt.DeltaRsdlRatio = 10;
   end
-  if ~isfield(opt,'SigmaScaling_bar'),
-    opt.SigmaScaling_bar = 2;
+  if ~isfield(opt,'DeltaScaling'),
+    opt.DeltaScaling = 2;
   end
-  if ~isfield(opt,'AutoSigmaScaling_bar'),
-    opt.AutoSigmaScaling_bar = 0;
+  if ~isfield(opt,'AutoDeltaScaling'),
+    opt.AutoDeltaScaling = 0;
   end  
   
   

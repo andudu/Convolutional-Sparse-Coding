@@ -1,6 +1,6 @@
 function x = solvemdbd_ism(ah, d,b)
 
-% solvemdbd_ism -- Solve a multiple diagonal block linear system with a 
+% solvemdbi_ism -- Solve a multiple diagonal block linear system with a 
 %                  scaled identity term by iterated application of the 
 %                  Sherman-Morrison equation
 %
@@ -19,7 +19,7 @@ function x = solvemdbd_ism(ah, d,b)
 %
 % Input:
 %       ah          Multi-dimensional array containing a^H
-%       d           Diagonal d
+%       rho         Scalar rho
 %       b           Multi-dimensional array containing b
 %
 % Output:

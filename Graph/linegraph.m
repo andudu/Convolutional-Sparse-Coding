@@ -7,23 +7,23 @@ psz = [10,10];
 coefsz = imsz-psz+[1,1];
 stpsz = [1,1];
 
-Wversion = 3;
-Lversion = 'n';
-Dversion = 'simpleline+noise';
+Wversion = 1;
+Lversion = 'u';
+Dversion = 'simpleline';
 
 %%%%%%%%%%%%%%%%%%   Generating Data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if strcmp(Dversion, 'simpleline'),
     % simple line
     s = zeros(69,69);
-    s(35:36,:) = .5;
+    s(35:36,:) = 1;
     indfoo = 34*60+20;
 end
 
 if strcmp(Dversion, 'simpleline+noise'),
     % simple line
     s = zeros(69,69);
-    s(35:36,:) = .5;
+    s(35:36,:) = 1;
     s = s+randn(size(s))*.1;
     indfoo = 34*60+20;
 end
@@ -130,21 +130,68 @@ end
 if Lversion == 'n'
     L = nlap(W);
 end
-nnz(L)/numel(L)
 
-neig = 40;
-[phi,E] = eigs(L,neig,'sr'); E = diag(E);
+% %visualizing the eigenvector, eigenvalues
 
-Xeig = zeros(coefsz(1),coefsz(2),neig);
-for i = 1:neig
-    foo = reshape(phi(:,i),coefsz(1),coefsz(2));
-    Xeig(:,:,i) = foo';
-end
+% neig = 40;
+% [phi,E] = eigs(L,neig,'sr'); E = diag(E);
+% 
+% Xeig = zeros(coefsz(1),coefsz(2),neig);
+% for i = 1:neig
+%     foo = reshape(phi(:,i),coefsz(1),coefsz(2));
+%     Xeig(:,:,i) = foo';
+% end
+% 
+% square_plot(Xeig,{});
+% 
+% figure;
+% plot(E,'r');
 
-square_plot(Xeig,{});
+% % cbpdn with graph regularization
+mu = .5;
+lambda = 0.2;
+opt = {};
+opt.Verbose = 0;
+opt.MaxMainIter = 130;
+opt.rho = 100*lambda + 1;
+opt.RelStopTol = 1e-3;
+opt.AuxVarObj = 0;
+opt.HighMemSolve = 1;
+opt.L1Weight = 1;
+temp = L;
+L= {};
+L{1}.M = temp;
+L{1}.ind1 = [1,1];
+L{1}.ind2 = coefsz;
 
-figure;
-plot(E,'r');
+% Load dictionary
+load([sporco_path '/Data/ConvDict.mat']);
+dmap = containers.Map(ConvDict.Label, ConvDict.Dict);
+D = dmap('12x12x36');
+D = double(D);
+
+s = s+randn(size(s))*.1;
+s = s(1:coefsz(1),1:coefsz(2));
+[Xcn,~] = cbpdn(D,s,lambda,opt);
+disp('cbpdn opt');
+opt.Ysolver = 'fista';
+[Xnl,~]= cbpdn_L(D,s,L,lambda,mu,opt);
+disp('nl opt');
+
+% reconstructing conv
+scnv = @(d,x) ifft2(sum(bsxfun(@times, fft2(d, size(x,1), size(x,2)), ...
+                               fft2(x)),3), 'symmetric');
+shrecnl = scnv(D,Xnl);
+shreccn = scnv(D,Xcn);
+
+figure; imagesc(shrecnl); colorbar; title('nonlocal rec'); colormap(gray);
+figure; imagesc(sum3(abs(Xnl))); colorbar; title('nonlocal coef');colormap(gray);
+
+figure; imagesc(shreccn); colorbar; title('conv rec');colormap(gray);
+figure; imagesc(sum3(abs(Xcn))); colorbar; title('conv coef');colormap(gray);
+
+
+
 
 
 
