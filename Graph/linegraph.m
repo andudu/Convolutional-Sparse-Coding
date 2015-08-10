@@ -9,7 +9,7 @@ stpsz = [1,1];
 
 Wversion = 2;
 Lversion = 'n';
-Dversion = 'simpleline';
+Dversion = 'simpleline+noise';
 
 %%%%%%%%%%%%%%%%%%   Generating Data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -70,7 +70,7 @@ end
 
 % Version 2. Do full nonlocal graph
 if Wversion == 2,    
-    tau = 15;
+    tau = 10;
     s1d = imageblocks(s,psz,stpsz); 
     s1d = reshape(s1d,size(s1d,1)*size(s1d,2),size(s1d,3));
     W = sqdist(s1d,s1d);
@@ -97,7 +97,7 @@ end
 if Wversion == 4, 
     tau = 1;
     k = 10;
-    nsz = [3,3];
+    nsz = [5,5];
     s1d = imageblocks(s,psz,stpsz); 
     s1d = reshape(s1d,size(s1d,1)*size(s1d,2),size(s1d,3));
     W = sqdist(s1d,s1d);
@@ -128,7 +128,7 @@ end
 
 %visualizing the eigenvector, eigenvalues
 
-neig = 40;
+neig = 20;
 [phi,E] = eigs(L,neig,'sr'); E = diag(E);
 
 Xeig = zeros(coefsz(1),coefsz(2),neig);
