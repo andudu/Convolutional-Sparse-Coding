@@ -1,8 +1,11 @@
 % Testing Salt and Pepper denoising
+% 
+% % Training images 512 x 512 
+% s = single(stdimage('lena.grey'))/255 ;
 
-% Training images 512 x 512 
-s = single(stdimage('lena.grey'))/255 ;
-
+% Lightning image
+load('lightning.mat');
+s = single(x)/255;
 
 % Add Salt and Pepper
 sn = imnoise(s, 'salt & pepper');
@@ -32,23 +35,13 @@ opt.RelStopTol = 1e-3;
 opt.AuxVarObj = 0;
 opt.HighMemSolve = 1;
 opt.AutoRhoPeriod = 4;
-
-
+opt.L1Weight = ones(size(x,1),size(x,2),37);
+opt.L1Weight(:,:,37) = .9*ones(size(x));
 [X,~] = cbpdn(D,sh,lambda,opt);
 sh_rec = convsum(D,X,1:1:numdict-1);
-% 
-% figure;
-% imagesc(sn);
-% axis off;
-% saveas(gcf,'saltpeppernoisylena','png');
-% 
-% figure;
-% imagesc(sh_rec+sl);
-% axis off;
-% saveas(gcf,'saltpepperreclena','png');
 
-imwrite(sn,'saltpeppernoisylena.png');
-imwrite(sh_rec+sl,'saltpepperreclena.png');
+imwrite(sn,'saltpepperlightning_noisy.png');
+imwrite(sh_rec+sl,'saltpepperlightning_rec.png');
 
 
 

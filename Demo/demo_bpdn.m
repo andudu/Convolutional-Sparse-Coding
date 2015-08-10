@@ -34,56 +34,50 @@ opt.RelStopTol = 1e-6;
 [x1, optinf] = bpdn(D, s, lambda, opt);
 
 
-figure;
-subplot(1,3,1);
-plot(optinf.itstat(:,2));
-xlabel('Iterations');
-ylabel('Functional value');
-subplot(1,3,2);
-semilogy(optinf.itstat(:,5));
-xlabel('Iterations');
-ylabel('Primal residual');
-subplot(1,3,3);
-semilogy(optinf.itstat(:,6));
-xlabel('Iterations');
-ylabel('Dual residual');
 
 
 figure;
-plot(x0,'r');
-hold on;
 plot(x1,'b');
-hold off;
-legend('Reference', 'Recovered', 'Location', 'SouthEast');
-title('Dictionary Coefficients');
+title('Dictionary Coefficients','FontSize',26);
+axis off;
+saveas(gcf,'bpdncoef','png');
+
+
+figure; 
+plot(s);
+title('Original Signal','FontSize',26);
+axis off;
+saveas(gcf,'bpdnsignal','png');
 
 
 
-% Illustrate restart capability: do 40 iterations and compare with
-% 20 iterations and then restart for an additional 20 iterations
-opt2 = opt;
-opt2.MaxMainIter = 40;
-[x2, optinf2] = bpdn(D, s, lambda, opt2);
 
-opt3 = opt2;
-opt3.MaxMainIter = 20;
-[x3, optinf3] = bpdn(D, s, lambda, opt3);
-
-opt4 = opt3;
-opt4.Y0 = optinf3.Y;
-opt4.U0 = optinf3.U;
-opt4.rho = optinf3.rho;
-[x4, optinf4] = bpdn(D, s, lambda, opt4);
-
-
-figure;
-plot(optinf2.itstat(:,1), optinf2.itstat(:,2), 'r');
-hold on;
-plot(optinf3.itstat(:,1), optinf3.itstat(:,2), 'g');
-plot(optinf4.itstat(:,1) + optinf3.itstat(end,1), optinf4.itstat(:,2), 'b');
-xlabel('Iterations');
-ylabel('Functional value');
-legend('Uninterrupted', 'Stop at 20 iterations', 'Restart at 20 iterations');
+% 
+% % Illustrate restart capability: do 40 iterations and compare with
+% % 20 iterations and then restart for an additional 20 iterations
+% opt2 = opt;
+% opt2.MaxMainIter = 40;
+% [x2, optinf2] = bpdn(D, s, lambda, opt2);
+% 
+% opt3 = opt2;
+% opt3.MaxMainIter = 20;
+% [x3, optinf3] = bpdn(D, s, lambda, opt3);
+% 
+% opt4 = opt3;
+% opt4.Y0 = optinf3.Y;
+% opt4.U0 = optinf3.U;
+% opt4.rho = optinf3.rho;
+% [x4, optinf4] = bpdn(D, s, lambda, opt4);
+% 
+% % 
+% figure;
+% plot(optinf2.itstat(:,1), optinf2.itstat(:,2), 'r');
+% hold on;
+% plot(optinf3.itstat(:,1), optinf3.itstat(:,2), 'g');
+% plot(optinf4.itstat(:,1) + optinf3.itstat(end,1), optinf4.itstat(:,2), 'b');
+% xlabel('Iterations');
+% ylabel('Functional value');
+% legend('Uninterrupted', 'Stop at 20 iterations', 'Restart at 20 iterations');
 
 
 
@@ -98,19 +92,19 @@ end
 S0 = D*X0;
 S = S0 + sigma*randn(N, K);
 
-% BPDN for simultaneous recovery of sparse coefficient matrix
-lambda = 20;
-opt = [];
-opt.Verbose = 1;
-opt.rho = 100;
-opt.RelStopTol = 1e-6;
-[X1, optinf] = bpdn(D, S, lambda, opt);
-
-
-figure;
-subplot(1,2,1);
-imagesc(X0);
-title('Reference');
-subplot(1,2,2);
-imagesc(X1);
-title('Recovered');
+% % BPDN for simultaneous recovery of sparse coefficient matrix
+% lambda = 20;
+% opt = [];
+% opt.Verbose = 1;
+% opt.rho = 100;
+% opt.RelStopTol = 1e-6;
+% [X1, optinf] = bpdn(D, S, lambda, opt);
+% 
+% 
+% figure;
+% subplot(1,2,1);
+% imagesc(X0);
+% title('Reference');
+% subplot(1,2,2);
+% imagesc(X1);
+% title('Recovered');

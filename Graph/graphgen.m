@@ -12,8 +12,8 @@ ind1 = [1,1];
 ind2 = ind1+wsz-[1,1];
 k = 1;
 
-while(ind2(1)<= size(sh,1))
-    while(ind2(2)<= size(sh,2))
+while(ind2(1)<= size(sh,1)-psz(1)+1)
+    while(ind2(2)<= size(sh,2)-psz(2)+1)
         L{k}.ind1 = ind1;
         L{k}.ind2 = ind2;
         a = winlap(sh,ind1,ind2,psz,tau);

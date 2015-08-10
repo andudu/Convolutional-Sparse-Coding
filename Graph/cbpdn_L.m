@@ -196,7 +196,7 @@ end
 
 o = cell(1,length(L)); %cell array of options for mini lasso
 for i = 1:length(L)
-    o{i}.MaxMainIter = 15;
+    o{i}.MaxMainIter = 13;
     o{i}.verbose = 0;
     if yslv == 'e'
         o{i}.V = [];

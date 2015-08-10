@@ -23,10 +23,14 @@ if~isfield(opt,'sparse'),
         opt.unifscale = 0;
     end
 end
-    if ~isfield(opt,'axis'),
-        opt.axis = 1;
-    end
-    
+
+if ~isfield(opt,'axis'),
+    opt.axis = 1;
+end
+
+if ~isfield(opt,'colorbar'),
+    opt.colorbar = 0;
+end
 
 
 for i = 0:k-1
@@ -47,6 +51,9 @@ for i = 0:k-1
                 end
                 if opt.grey
                    colormap(gray);
+                end
+                if opt.colorbar,
+                    colorbar;
                 end
             else
                 spy(D(:,:,ind));
