@@ -2,32 +2,42 @@
 
 %%%%%%%%%%%%%%%%%% Setting the Parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-imsz = [69,69];
-psz = [12,12];
+%setting options for Graph Laplacian
+optl.wsz = [60,60];
+optl.psz = [12,12];
+optl.neig = 30;
+optl.Lformat = 'Sparse';
+optl.Laplacian = 'n';
+optl.Graph.tau = 3;
+optl.Graph.Metric = 'Euclidean';
+optl.Graph.GraphType = 'Window';
+optl.Graph.nsz = [4,4];
+optl.Graph.k = [];
+
+
+imsz = optl.wsz+optl.psz-[-1,-1] ;
+psz = optl.psz;
 coefsz = imsz-psz+[1,1];
 stpsz = [1,1];
 
-Wversion = 2;
-Lversion = 'n';
-Dversion = 'simpleline';
 
+Dversion = 'simpleline+noise';
+Wversion = 0;
 %%%%%%%%%%%%%%%%%%   Generating Data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if strcmp(Dversion, 'simpleline'),
     % simple line
-    s = zeros(69,69);
+    s = zeros(imsz);
     s(35:36,:) = 1;
     s_ref = s;
-    indfoo = 34*60+20;
 end
 
 if strcmp(Dversion, 'simpleline+noise'),
     % simple line
-    s = zeros(69,69);
+    s = zeros(imsz);
     s(35:36,:) = 1;
-    s = s+randn(size(s))*.1;
     s_ref = s;
-    indfoo = 34*60+20;
+    s = s+randn(size(s))*.1;
 end
 
 
@@ -66,79 +76,28 @@ if Wversion == 1
         end
     end
     W = W+W';
-end
-
-% Version 2. Do full nonlocal graph
-if Wversion == 2,    
-    tau = 100;
-    s1d = imageblocks(s,psz,stpsz); 
-    s1d = reshape(s1d,size(s1d,1)*size(s1d,2),size(s1d,3));
-    W = sqdist(s1d,s1d);
-    W = exp(-W/(tau));
-end
-
-% Version 3. K nearest Neighbors of full graph
-if Wversion == 3,
-    np = psz(1)*psz(2);    
-    tau = 1;
-    k = 10;
-    s1d = imageblocks(s,psz,stpsz); 
-    s1d = reshape(s1d,size(s1d,1)*size(s1d,2),size(s1d,3));
-    W = sqdist(s1d,s1d);
-    W = exp(-W/(tau*np));
-    for iter = 1:size(W,1)
-        [~,is] = sort(W(:,iter),'descend');
-        W(is(k+1:end),iter) = 0;
+    if strcmp(optl.Laplacian,'n')
+        L = ulap(W);
+    else
+        L = nlap(W);
     end
-    W = max(W,W');
-    W = sparse(W);
 end
 
-
-% Version 4. K nearest Neighbors within a smaller window
-if Wversion == 4
-    np = psz(1)*psz(2);
-    tau = 1;
-    k = 6;
-    nsz = [2,2];
-    s1d = imageblocks(s,psz,stpsz); 
-    s1d = reshape(s1d,size(s1d,1)*size(s1d,2),size(s1d,3));
-    W = sqdist(s1d,s1d);
-    W = exp(-W/(tau*np));
-    for iter = 1:size(W,1);
-        Ind = patchind(iter,nsz,coefsz);
-        [v,is] = sort(W(Ind,iter),'descend');
-        W(:,iter) = 0;
-        W(Ind(is(1:k)),iter) = v(1:k);
-    end
-    W = max(W,W');
-    W = sparse(W);    
-        
+% Version 0 Choose a scheme specified by optl
+if Wversion == 0
+    [L,scrop] = laplacian_from_image(s,optl);
+    [phi,E] = eigs
 end
-
-
-
-
-
-
 
 %%%%%%%%%%%%%%%%%%%%% Visualizing and Testing Laplacian%%%%%%%%%%%%%%%%%%%%
 
-if Lversion == 'u'
-    L = ulap(W);
-end
-if Lversion == 'n'
-    L = nlap(W);
-end
 
 %visualizing the eigenvector, eigenvalues
 
-neig = 5;
-[phi,E] = eigs(L,neig,'sr'); E = diag(E);
-
-Xeig = zeros(coefsz(1),coefsz(2),neig);
+neig = optl.neig;
+Xeig = zeros(optl.wsz(1),optl.wsz(2),neig);
 for i = 1:neig
-    foo = reshape(phi(:,i),coefsz(1),coefsz(2));
+    foo = reshape(phi(:,i),optl.wsz(1),optl.wsz(2));
     Xeig(:,:,i) = foo';
 end
 o.colorbar = 1;
@@ -146,6 +105,8 @@ square_plot(Xeig,o);
 
 figure;
 plot(E,'r');
+
+
 
 
 

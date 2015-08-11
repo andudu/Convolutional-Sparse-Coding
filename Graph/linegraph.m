@@ -2,32 +2,60 @@
 
 %%%%%%%%%%%%%%%%%% Setting the Parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-imsz = [69,69];
-psz = [12,12];
+%setting options for Graph Laplacian
+optl = {};
+optl.wsz = [60,60];
+optl.psz = [12,12];
+optl.neig = 30;
+optl.Lformat = 'Full';
+optl.Laplacian = 'n';
+optl.Graph.tau = .8;
+optl.Graph.Metric = 'Cosine';
+optl.Graph.GraphType = 'Full';
+optl.Graph.nsz = [5,5];
+optl.Graph.k = [];
+
+
+imsz = optl.wsz+optl.psz-[-1,-1] ;
+psz = optl.psz;
 coefsz = imsz-psz+[1,1];
 stpsz = [1,1];
 
-Wversion = 2;
-Lversion = 'n';
-Dversion = 'simpleline+noise';
 
+Dversion = 'lenapatch+noise';
+Wversion = 0;
 %%%%%%%%%%%%%%%%%%   Generating Data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if strcmp(Dversion, 'simpleline'),
     % simple line
-    s = zeros(69,69);
+    s = zeros(imsz);
     s(35:36,:) = 1;
     s_ref = s;
-    indfoo = 34*60+20;
 end
 
 if strcmp(Dversion, 'simpleline+noise'),
     % simple line
-    s = zeros(69,69);
+    s = zeros(imsz);
     s(35:36,:) = 1;
-    s = s+randn(size(s))*.1;
     s_ref = s;
-    indfoo = 34*60+20;
+    s = s+randn(size(s))*.2;
+end
+
+if strcmp(Dversion, 'lenapatch'),
+    %patch from lena
+    s = single(stdimage('lena.grey')) / 255;
+    s = imresize(s,.5);
+    [sl,sh] = lowpass(s,7,15);
+    s = sh(50:1:imsz(1)+50-1,160:1:imsz(2)+160-1);
+end
+
+if strcmp(Dversion, 'lenapatch+noise'),
+    %patch from lena
+    s = single(stdimage('lena.grey')) / 255;
+    s = imresize(s,.5);
+    [sl,sh] = lowpass(s,7,15);
+    s = sh(50:1:imsz(1)+50-1,160:1:imsz(2)+160-1);
+    s = randn(size(s))*.1+s;
 end
 
 
@@ -66,74 +94,29 @@ if Wversion == 1
         end
     end
     W = W+W';
-end
-
-% Version 2. Do full nonlocal graph
-if Wversion == 2,    
-    tau = 10;
-    s1d = imageblocks(s,psz,stpsz); 
-    s1d = reshape(s1d,size(s1d,1)*size(s1d,2),size(s1d,3));
-    W = sqdist(s1d,s1d);
-    W = exp(-W/(tau));
-end
-
-% Version 3. K nearest Neighbors of full graph
-if Wversion == 3, 
-    tau = 1;
-    k = 40;
-    s1d = imageblocks(s,psz,stpsz); 
-    s1d = reshape(s1d,size(s1d,1)*size(s1d,2),size(s1d,3));
-    W = sqdist(s1d,s1d);
-    W = exp(-W/(tau));
-    for iter = 1:size(W,2)
-        [~,is] = sort(W(:,iter),'descend');
-        W(is(k+1:end),iter) = 0;
+    if strcmp(optl.Laplacian,'n')
+        L = ulap(W);
+    else
+        L = nlap(W);
     end
-    W = max(W,W');   
 end
 
-
-% Version 4. K nearest Neighbors within a smaller window
-if Wversion == 4, 
-    tau = 1;
-    k = 10;
-    nsz = [5,5];
-    s1d = imageblocks(s,psz,stpsz); 
-    s1d = reshape(s1d,size(s1d,1)*size(s1d,2),size(s1d,3));
-    W = sqdist(s1d,s1d);
-    W = exp(-W/(tau));
-    for iter = 1:size(W,1);
-        Ind = patchind(iter,nsz,coefsz);
-        [v,is] = sort(W(Ind,iter),'descend');
-        W(:,iter) = 0;
-        W(Ind(is(1:k)),iter) = v(1:k);
-    end
-    W = max(W,W');          
+% Version 0 Choose a scheme specified by optl
+if Wversion == 0
+    [L,scrop] = laplacian_from_image(s,optl);
+    [phi,E] = eigs(L{1}.M,optl.neig,'sr');
+    E = diag(E);
 end
-
-
-
-
-
-
 
 %%%%%%%%%%%%%%%%%%%%% Visualizing and Testing Laplacian%%%%%%%%%%%%%%%%%%%%
 
-if Lversion == 'u'
-    L = ulap(W);
-end
-if Lversion == 'n'
-    L = nlap(W);
-end
 
 %visualizing the eigenvector, eigenvalues
 
-neig = 20;
-[phi,E] = eigs(L,neig,'sr'); E = diag(E);
-
-Xeig = zeros(coefsz(1),coefsz(2),neig);
+neig = optl.neig;
+Xeig = zeros(optl.wsz(1),optl.wsz(2),neig);
 for i = 1:neig
-    foo = reshape(phi(:,i),coefsz(1),coefsz(2));
+    foo = reshape(phi(:,i),optl.wsz(1),optl.wsz(2));
     Xeig(:,:,i) = foo';
 end
 o.colorbar = 1;
@@ -143,8 +126,13 @@ figure;
 plot(E,'r');
 
 figure;
-imagesc(W);
+a = L{1}.M;
+for i = 1:size(a,1)
+    a(i,i) = 0;
+end
+imagesc(-a);
 colorbar;
+
 
 
 

@@ -60,16 +60,3 @@ opt.AutoRhoPeriod = 4;
 sh_rec = convsum(D,X,1:1:numdict-1);
 
 
-% 
-% figure;
-% imagesc(sn);
-% axis off;
-% saveas(gcf,'saltpeppernoisylena','png');
-% 
-% figure;
-% imagesc(sh_rec+sl);
-% axis off;
-% saveas(gcf,'saltpepperreclena','png');
-
-imwrite(sn,'iplightningoriginal.png');
-imwrite(sh_rec+sl,'iplightningrec.png');
