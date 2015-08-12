@@ -6,7 +6,9 @@ function [D] = cosdist(X, Y)
  
 Yt = Y';  
 XX = sqrt(sum(X.*X,1));        
-YY = sqrt(sum(Yt.*Yt,2));      
+YY = sqrt(sum(Yt.*Yt,2));   
+XX(XX == 0) = .01;
+YY(YY ==0 ) = .01; %division by 0
 D = bsxfun(@rdivide,Yt,YY) * bsxfun(@rdivide,X,XX);
 
 end

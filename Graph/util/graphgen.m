@@ -11,7 +11,7 @@ end
 
 if strcmp(opt.Metric, 'Cosine')
     foo = cosdist(s1d,s1d);
-    foo(foo<-0) = 0; %hard thresholding negative values
+    foo(foo<=0) = 0; %hard thresholding negative values
     W = exp(-(1./(foo+.01)-.9901)/tau);
 end
 
