@@ -1,6 +1,6 @@
-function [Y,U, optinf] = cbpdn_L(D, S, L, lambda, mu, opt)
+function [Z,U,optinf] = cbpdnL_split(D, S, L, lambda, mu, opt)
 
-% cbpdn -- Convolutional Basis Pursuit DeNoising
+% cbpdnL_lasso -- Convolutional Basis Pursuit DeNoising with Laplacian
 %
 %         argmin_{x_k} (1/2)||\sum_k d_k * x_k - s||_2^2 +
 %                           lambda \sum_k ||x_k||_1 
@@ -11,7 +11,7 @@ function [Y,U, optinf] = cbpdn_L(D, S, L, lambda, mu, opt)
 %         linear systems (see wohlberg-2014-efficient).
 %
 % Usage:
-%       [Y, optinf] = cbpdn(D, S, lambda, opt);
+%       [Z, U] = cbpdnL_split(D, S,L, lambda,mu, opt);
 %
 % Input:
 %       D           Dictionary filter set (3D array)
@@ -80,13 +80,24 @@ if nargin < 6,
 end
 checkopt(opt, defaultopts([]));
 opt = defaultopts(opt);
-
+optinf = [];
 % Set up status display for verbose operation
-hstr = 'Itn   Fnc       DFid      l1        r         s    ';
-sfms = '%4d %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e';
-nsep = 54;
+if strcmp(opt.Lformat,'Eig')
+    hstr = 'Itn   Fnc       DFid      JL_par    JL_perp    l1        ry         sy         rz        sz     ';
+    sfms = '%4d %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e ';
+    nsep = 97;
+else
+     hstr = 'Itn   Fnc       DFid      JLp       l1        ry         sy         rz        sz     ';
+    sfms = '%4d %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e ';
+    nsep = 90;   
+end
 if opt.AutoRho,
-  hstr = [hstr '   rho  '];
+  hstr = [hstr '   rho    '];
+  sfms = [sfms ' %9.2e'];
+  nsep = nsep + 10;
+end
+if opt.AutoSigma,
+  hstr = [hstr '    sigma  '];
   sfms = [sfms ' %9.2e'];
   nsep = nsep + 10;
 end
@@ -134,27 +145,34 @@ if nargin < 3 | isempty(lambda),
   lambda = 0.1*max(vec(abs(b)));
 end
 
+
 % Set up algorithm parameters and initialise variables
 rho = opt.rho;
 if isempty(rho), rho = 50*lambda+1; end;
 if isempty(opt.RhoRsdlTarget),
   if opt.StdResiduals,
     opt.RhoRsdlTarget = 1;
+    opt.SigmaRsdlTarget = 1;
   else
     opt.RhoRsdlTarget = 1 + (18.3).^(log10(lambda) + 1);
+    opt.SigmaRsdlTarget = opt.RhoRsdlTarget;
   end
 end
+sigma = rho;
 if opt.HighMemSolve,
-  C = bsxfun(@rdivide, Df, sum(Df.*conj(Df), 3) + rho);
+  C = bsxfun(@rdivide, Df, sum(Df.*conj(Df), 3) + rho + sigma);
 else
   C = [];
 end
 Nx = prod(xsz);
-optinf = struct('itstat', [], 'opt', opt);
-r = Inf;
-s = Inf;
-epri = 0;
-edua = 0;
+rz = Inf;
+sz = Inf;
+epriz = 0;
+eduaz = 0;
+ry = Inf;
+sy = Inf;
+epriy = 0;
+eduay = 0;
 
 % Initialise main working variables
 X = [];
@@ -174,45 +192,64 @@ else
   U = opt.U0;
 end
 
+if isempty(opt.Z0),
+  Z = zeros(xsz);
+else
+  Z = opt.Z0;
+end
+Zprv = Z;
+if isempty(opt.V0),
+  if isempty(opt.V0),
+    V = zeros(xsz);
+  else
+    V = (lambda/rho)*sign(Y);
+  end
+else
+  V = opt.V0;
+end
+
+
 % Main loop
 k = 1;
-
 %check which solver to use for Y update
-yslv = 0;
-if ~isempty(opt.Ysolver)
-    if strcmp(opt.Ysolver, 'admmeig')
-       yslv = 'e';
-    end
-    if strcmp(opt.Ysolver,'fista')
-        yslv = 'f';
+if ~isempty(opt.Lformat)
+    if strcmp(opt.Lformat, 'Eig')
+       lf = 'e';
+    else
+        lf = 'm';
     end
 else
     if isfield(L{1},'phi')
-        yslv = 'e';
+        lf = 'e';
     else
-        yslv = 'f';
+        lf = 'm';
     end    
 end
 
-o = cell(1,length(L)); %cell array of options for mini lasso
-for i = 1:length(L)
-    o{i}.MaxMainIter = 13;
-    o{i}.verbose = 0;
-    if yslv == 'e'
-        o{i}.V = [];
-        o{i}.Y_bar = [];
+
+if lf == 'm'
+    A = {};
+    I1 = L{1}.ind1(1):L{1}.ind2(1);
+    I2 = L{1}.ind1(2):L{1}.ind2(2);
+    sz = [length(I2),length(I1),size(Y,3)];
+    for i = 1:length(L)
+        A{i} = speye(size(L{i}.M))*sigma + mu*L{i}.M;
     end
-    if yslv == 'f'
-        o{i}.Y = [];
-        o{i}.eta = 1.2;
+    Aop = {};
+    for i = 1:length(L)
+        temp = @(u) A{i}*(reshape(u,sz));
+        Aop{i} = temp;
     end
+    zcgtol = opt.RelStopTol/10;
+    
 end
 
 
-while k <= opt.MaxMainIter & (r > epri | s > edua),
+
+while k <= opt.MaxMainIter & (rz > epriz | sz > eduaz) & (ry > epriy | sy > eduay),
 
   % Solve X subproblem
-  Xf = solvedbi_sm(Df, rho, DSf + rho*fft2(Y - U), C);
+  Xf = solvedbi_sm(Df, rho+sigma, DSf + (rho+sigma)*fft2(rho/(rho+sigma)*(Y - U)+ sigma/(rho+sigma)*(Z-V)), C);
   X = ifft2(Xf, 'symmetric');
 
   % See pg. 21 of boyd-2010-distributed
@@ -222,125 +259,185 @@ while k <= opt.MaxMainIter & (r > epri | s > edua),
     Xr = opt.RelaxParam*X + (1-opt.RelaxParam)*Y;
   end
 
-  % Solve Y subproblem. Use one of the Mini Lasso Solver
-  if yslv == 'e'  %reshapes!! Careful with the direction
+  % Solve Y subproblem
+  Y = shrink(Xr + U, (lambda/rho)*opt.L1Weight);  
+  
+  % Solve Z subproblem. Either via PCG or Eig Decomp
+  if lf == 'e'  %reshapes!! Careful with the direction
+      a = Xr+V; JL_par = 0; JL_perp = 0;
       for i = 1:length(L)
-          Ltemp = L{i};
-          a = Xr+U;
-          I1 = Ltemp.ind1(1):Ltemp.ind2(1);
-          I2 = Ltemp.ind1(2):Ltemp.ind2(2);
-          [temp,o{i}.V] = eiglasso(Ltemp.phi,Ltemp.E,reshape(permute(a(I1,I2,:),[2,1,3]),length(I1)*length(I2) ...
-              ,size(a,3)),lambda,mu,rho,o{i}); % warm starting
-          o{i}.Y_bar = temp;
+          E = L{i}.E;
+          phi = L{i}.phi;
+          I1 = L{i}.ind1(1):L{i}.ind2(1);
+          I2 = L{i}.ind1(2):L{i}.ind2(2);
+          ai = reshape(permute(a(I1,I2,:),[2,1,3]),length(I1)*length(I2) ...
+              ,size(a,3));
+          %solve via eigenvectors
+          ai_c = phi'*ai;
+          ai_par = phi*(ai_c);
+          ai_perp = ai - ai_par;
+          temp_c = bsxfun(@times,sigma./(mu*E + sigma),ai_c) ;
+          temp_par = phi*temp_c;
+          temp_perp = ai_perp*sigma/(mu+sigma);
+          temp = temp_par + temp_perp;
           temp = reshape(temp,length(I1),length(I2),size(a,3));
-          Y(I1,I2,:) = temp;
-          clear a;
+          Z(I1,I2,:) = permute(temp,[2,1,3]);
+          if opt.Verbose,
+             JL_par = JL_par + sum(vec(temp_c.*bsxfun(@times,temp_c,E))); 
+             JL_perp = JL_perp + sum(vec(temp_perp.^2));
+          end
+          
       end
+      JLp = JL_par + JL_perp;
+      clear a temp E phi temp temp_par temp_perp;
   end
   
-  if yslv == 'f'
-      Ltemp = L{i};
-      a = Xr+U;
-      I1 = Ltemp.ind1(1):Ltemp.ind2(1);
-      I2 = Ltemp.ind1(2):Ltemp.ind2(2);
-      [temp,~] = lasso_fista(Ltemp.M,reshape(a(I1,I2,:)',length(I1)*length(I2) ...
-          ,size(a,3)),lambda,mu,rho,o{i}); % warm starting
-      o{i}.Y = temp;
-      temp = reshape(temp,length(I1),length(I2),size(a,3))';
-      Y(I1,I2,:) = temp;
-      clear a;
+  if lf == 'm' % pcg solver
+      a = Xr+V; JLp = 0;
+      for i = 1:length(L)
+          I1 = L{i}.ind1(1):L{i}.ind2(1);
+          I2 = L{i}.ind1(2):L{i}.ind2(2);
+          temp =  pcg(Aop{i},sigma*vec(permute(a(I1,I2,:),[2,1,3])),zcgtol);
+          if opt.Verbose,
+              JLp = JLp + trace(temp'*L{i}.M*temp);
+          end
+          temp = reshape(temp,length(I1),length(I2),size(a,3));
+          Z(I1,I2,:) = permute(temp,[2,1,3]);          
+          clear a  temp;
+      end
   end
   
   
   % Update dual variable
   U = U + Xr - Y;
-
+  V = V + Xr - Z;
+  
+  
   % Compute data fidelity term in Fourier domain (note normalisation)
-  if opt.AuxVarObj,
-    Yf = fft2(Y); % This represents unnecessary computational cost
-    Jdf = sum(vec(abs(sum(bsxfun(@times,Df,Yf),3)-Sf).^2))/(2*xsz(1)*xsz(2));
-    Jl1 = sum(abs(vec(bsxfun(@times, opt.L1Weight, Y))));
-  else
-    Jdf = sum(vec(abs(sum(bsxfun(@times,Df,Xf),3)-Sf).^2))/(2*xsz(1)*xsz(2));
-    Jl1 = sum(abs(vec(bsxfun(@times, opt.L1Weight, X))));
+  if opt.Verbose
+      if opt.AuxVarObj,
+          Yf = fft2(Y); % This represents unnecessary computational cost
+          Jdf = sum(vec(abs(sum(bsxfun(@times,Df,Yf),3)-Sf).^2))/(2*xsz(1)*xsz(2));
+          Jl1 = sum(abs(vec(bsxfun(@times, opt.L1Weight, Y))));
+      else
+          Jdf = sum(vec(abs(sum(bsxfun(@times,Df,Xf),3)-Sf).^2))/(2*xsz(1)*xsz(2));
+          Jl1 = sum(abs(vec(bsxfun(@times, opt.L1Weight, X))));
+      end
+      Jfn = Jdf + lambda*Jl1 + .5*mu*JLp;
   end
-  Jfn = Jdf + lambda*Jl1;
 
   nX = norm(X(:)); nY = norm(Y(:)); nU = norm(U(:));
   if opt.StdResiduals,
     % See pp. 19-20 of boyd-2010-distributed
-    r = norm(vec(X - Y));
-    s = norm(vec(rho*(Yprv - Y)));
-    epri = sqrt(Nx)*opt.AbsStopTol+max(nX,nY)*opt.RelStopTol;
-    edua = sqrt(Nx)*opt.AbsStopTol+rho*nU*opt.RelStopTol;
+    ry = norm(vec(X - Y));
+    sy = norm(vec(rho*(Yprv - Y)));
+    epriy = sqrt(Nx)*opt.AbsStopTol+max(nX,nY)*opt.RelStopTol;
+    eduay = sqrt(Nx)*opt.AbsStopTol+rho*nU*opt.RelStopTol;
   else
     % See wohlberg-2015-adaptive
-    r = norm(vec(X - Y))/max(nX,nY);
-    s = norm(vec(Yprv - Y))/nU;
-    epri = sqrt(Nx)*opt.AbsStopTol/max(nX,nY)+opt.RelStopTol;
-    edua = sqrt(Nx)*opt.AbsStopTol/(rho*nU)+opt.RelStopTol;
+    ry = norm(vec(X - Y))/max(nX,nY);
+    sy = norm(vec(Yprv - Y))/nU;
+    epriy = sqrt(Nx)*opt.AbsStopTol/max(nX,nY)+opt.RelStopTol;
+    eduay = sqrt(Nx)*opt.AbsStopTol/(rho*nU)+opt.RelStopTol;
   end
-   
-  % Record and display iteration details
-  tk = toc(tstart);
-  optinf.itstat = [optinf.itstat; [k Jfn Jdf Jl1 r s epri edua rho tk]];
+
+  
+  nZ = norm(X(:));  nV = norm(U(:));
+  if opt.StdResiduals,
+    % See pp. 19-20 of boyd-2010-distributed
+    rz = norm(vec(X - Z));
+    sz = norm(vec(sigma*(Zprv - Z)));
+    epriz = sqrt(Nx)*opt.AbsStopTol+max(nX,nZ)*opt.RelStopTol;
+    eduaz = sqrt(Nx)*opt.AbsStopTol+sigma*nV*opt.RelStopTol;
+  else
+    % See wohlberg-2015-adaptive
+    rz = norm(vec(X - Z))/max(nX,nZ);
+    sz = norm(vec(Zprv - Z))/nV;
+    epriz = sqrt(Nx)*opt.AbsStopTol/max(nX,nZ)+opt.RelStopTol;
+    eduaz = sqrt(Nx)*opt.AbsStopTol/(sigma*nV)+opt.RelStopTol;
+  end
+  
+  
   if opt.Verbose,
-    if opt.AutoRho,
-      disp(sprintf(sfms, k, Jfn, Jdf, Jl1, r, s, rho));
+    if lf == 'e'  
+        dvc = [k, Jfn, Jdf, JL_par,JL_perp Jl1, ry, sy, rz, sz];
     else
-      disp(sprintf(sfms, k, Jfn, Jdf, Jl1, r, s));
+        dvc = [k, Jfn, Jdf, JLp, Jl1, ry, sy, rz, sz];        
     end
+    if opt.AutoRho,
+      dvc = [dvc rho];
+    end
+    if opt.AutoSigma,
+      dvc = [dvc sigma];
+    end
+    disp(sprintf(sfms, dvc));
   end
 
   % See wohlberg-2015-adaptive and pp. 20-21 of boyd-2010-distributed
   if opt.AutoRho,
     if k ~= 1 && mod(k, opt.AutoRhoPeriod) == 0,
       if opt.AutoRhoScaling,
-        rhomlt = sqrt(r/(s*opt.RhoRsdlTarget));
+        rhomlt = sqrt(ry/(sy*opt.RhoRsdlTarget));
         if rhomlt < 1, rhomlt = 1/rhomlt; end
         if rhomlt > opt.RhoScaling, rhomlt = opt.RhoScaling; end
       else
         rhomlt = opt.RhoScaling;
       end
       rsf = 1;
-      if r > opt.RhoRsdlTarget*opt.RhoRsdlRatio*s, rsf = rhomlt; end
-      if s > (opt.RhoRsdlRatio/opt.RhoRsdlTarget)*r, rsf = 1/rhomlt; end
+      if ry > opt.RhoRsdlTarget*opt.RhoRsdlRatio*sy, rsf = rhomlt; end
+      if sy > (opt.RhoRsdlRatio/opt.RhoRsdlTarget)*ry, rsf = 1/rhomlt; end
       rho = rsf*rho;
       U = U/rsf;
       if opt.HighMemSolve && rsf ~= 1,
-        C = bsxfun(@rdivide, Df, sum(Df.*conj(Df), 3) + rho);
+        C = bsxfun(@rdivide, Df, sum(Df.*conj(Df), 3) + (rho+sigma));
       end
     end
   end
 
+    % See wohlberg-2015-adaptive and pp. 20-21 of boyd-2010-distributed
+  if opt.AutoSigma,
+    if k ~= 1 && mod(k, opt.AutoSigmaPeriod) == 0,
+      if opt.AutoSigmaScaling,
+        sigmamlt = sqrt(rz/(sz*opt.SigmaRsdlTarget));
+        if sigmamlt < 1, sigmamlt = 1/sigmamlt; end
+        if sigmamlt > opt.SigmaScaling, sigmamlt = opt.SigmaScaling; end
+      else
+        sigmamlt = opt.SigmaScaling;
+      end
+      rsf = 1;
+      if rz > opt.SigmaRsdlTarget*opt.SigmaRsdlRatio*sz, rsf = sigmamlt; end
+      if sz > (opt.SigmaRsdlRatio/opt.SigmaRsdlTarget)*rz, rsf = 1/sigmamlt; end
+      sigma = rsf*sigma;
+      V = V/rsf;
+      if opt.HighMemSolve && rsf ~= 1,
+        C = bsxfun(@rdivide, Df, sum(Df.*conj(Df), 3) + rho + sigma);
+      end
+    end
+  end
+  
+  
   Yprv = Y;
+  Zprv = Z;
   k = k + 1;
 
 end
 
-% Record run time and working variables
-optinf.runtime = toc(tstart);
-optinf.X = X;
-optinf.Xf = Xf;
-optinf.Y = Y;
-optinf.U = U;
-optinf.lambda = lambda;
-optinf.rho = rho;
 
 % End status display for verbose operation
 if opt.Verbose && opt.MaxMainIter > 0,
   disp(char('-' * ones(1,nsep)));
 end
 
+
 return
 
-
+end
 function u = vec(v)
 
   u = v(:);
 
 return
-
+end
 
 function u = shrink(v, lambda)
 
@@ -352,6 +449,7 @@ function u = shrink(v, lambda)
 
 return
 
+end
 
 function opt = defaultopts(opt)
 
@@ -382,6 +480,16 @@ function opt = defaultopts(opt)
   if ~isfield(opt,'rho'),
     opt.rho = [];
   end
+  if ~isfield(opt,'Z0'),
+    opt.Z0 = [];
+  end
+  if ~isfield(opt,'V0'),
+    opt.V0 = [];
+  end
+  if ~isfield(opt,'sigma'),
+    opt.sigma = [];
+  end  
+  
   if ~isfield(opt,'AutoRho'),
     opt.AutoRho = 1;
   end
@@ -400,6 +508,27 @@ function opt = defaultopts(opt)
   if ~isfield(opt,'RhoRsdlTarget'),
     opt.RhoRsdlTarget = [];
   end
+  
+   if ~isfield(opt,'AutoSigma'),
+    opt.AutoSigma = 1;
+  end
+  if ~isfield(opt,'AutoSigmaPeriod'),
+    opt.AutoSigmaPeriod = 1;
+  end
+  if ~isfield(opt,'SigmaRsdlRatio'),
+    opt.SigmaRsdlRatio = 1.2;
+  end
+  if ~isfield(opt,'SigmaScaling'),
+    opt.SigmaScaling = 100;
+  end
+  if ~isfield(opt,'AutoSigmaScaling'),
+    opt.AutoSigmaScaling = 1;
+  end
+  if ~isfield(opt,'SigmaRsdlTarget'),
+    opt.SigmaRsdlTarget = [];
+  end
+  
+  
   if ~isfield(opt,'StdResiduals'),
     opt.StdResiduals = 0;
   end
@@ -417,3 +546,4 @@ function opt = defaultopts(opt)
   end
 
 return
+end

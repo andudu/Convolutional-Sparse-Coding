@@ -1,9 +1,0 @@
-s = single(rgbtogrey(stdimage('lena')))/255;
-s = imresize(s,.5);
-
-psz = [12;
-st = 3;
-s1d = imageblocks(s,[psz,psz],[st,st]);
-srec = zeros(size(s));
-for i = 1:size(s1d,3)
-    ind = flat2rec(i,256,[psz,psz],[st,st]);

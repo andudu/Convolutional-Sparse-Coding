@@ -26,8 +26,7 @@ D = dmap('12x12x36');
 
 %%%%%%%%%%%%%%%%%%%%%%% set up parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
- mu_all = 0.1:0.1:1;
-%mu_all = 0.1:0.1:0.2;
+mu_all = 0.1:0.1:1;
 opt = {};
 opt.Verbose = 0;
 opt.MaxMainIter = 300;

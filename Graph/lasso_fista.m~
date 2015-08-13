@@ -1,4 +1,4 @@
-function [Y,el_out] = lasso_fista(L, Z, lambda,mu,rho, opt)
+function [Y,optinf] = lasso_fista(L, Z, lambda,mu,rho, opt)
 %  Solve:        argmin_{Y} (mu/2)Y'LY + (rho/2) ||Y-Z||^2
 %                                   +lambda \sum_k ||Y||_1
 % via Fista. Spatial coordinates should be flattened before using.
@@ -18,13 +18,13 @@ else
     eta = 1.2;
 end
 
-if(isfield(opt,'el'))
+if(~isempty(opt.el))
     el = opt.el;
 else
     el = 1;
 end
 
-if(isfield(opt,'LinesearchPeriod'))
+if(~isfield(opt,'LinesearchPeriod'))
     lp = opt.LinesearchPeriod;
 else
     lp = 5;
@@ -35,12 +35,9 @@ if(~isfield(opt,'L1Weight'))
     opt.L1Weight = 1;
 end
 
-if(~isfield(opt,'tol'))
-    opt.tol = 1e-4;
-end
-
 Xprv = Y;
 flag = 0;
+optinf = [];
 %displaying
 if(opt.verbose == 1)
     hstr = 'Itn   Fnc       DFid      l1        r        el    ';
@@ -55,18 +52,17 @@ end
 %main iteration
 
 t = 1; k = 0;
-r = inf;
 
 
-while k < opt.MaxMainIter && r>opt.tol;
+
+
+while k < opt.MaxMainIter
     linesrch = 1;
     Dyz = Y-Z;
     if (mod(k,lp) == 0)
         Fy = .5*mu*trace(Y'*L*Y)+.5*rho*sum(Dyz(:).^2);
     end
-    foo1 = mu*L*Y;
-    foo2 = rho*Dyz;
-    G = foo1+foo2;
+    G = mu*L*Y+rho*Dyz;
     while linesrch,
         V = Y- 1/el*G;  %forward gradient step
         X = shrink(V, (lambda/el)*opt.L1Weight);
@@ -81,8 +77,7 @@ while k < opt.MaxMainIter && r>opt.tol;
                 el = eta*el;
             end
         else
-            linesrch = 0; %pretend its already done
-        end
+            
     end
     tprv = t;
     t = (1 + sqrt(1 + 4*tprv^2))/2;
@@ -94,14 +89,12 @@ while k < opt.MaxMainIter && r>opt.tol;
         Jf = F + lambda*Jl1;
         r = norm(X(:) - Xprv(:))/norm(X(:));
         disp(sprintf(sfms, k, Jf, F, Jl1, r,el));
+        optinf.Jfn(k) = Jf;
     end
     
     %updating to next iteration
-    r = norm(X(:) - Xprv(:))/norm(X(:));
     Xprv = X;
 end
-
-el_out = el/eta;
 
 end
 

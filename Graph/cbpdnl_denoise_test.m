@@ -1,52 +1,65 @@
+%script for testing and plotting cbpdn_L
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%  Load  Data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %load a saved noise
-%load('noise_data.mat');
-%snoise = s;
 snoise = randn(256,256)*.1;
-sref = single(stdimage('lena.grey')) / 255;
+sref = double(stdimage('lena.grey')) / 255;
 sref = imresize(sref,.5);
 s = sref+snoise;
-wsz = [20,20];
-psz = [12,12];
-neig = 30;
 [sl,sh] = lowpass(s,5,15);
-tau = 6;
-[L,sh] = graphgen(sh,wsz,psz,neig,tau);
-disp('graph generated');
-sl = sl(1:size(sh,1),1:size(sh,2));
-
-sref = sref(1:size(sh,1),1:size(sh,2));
-
-[~,shref] = lowpass(sref,5,15);
 
 
 % Load dictionary
 load([sporco_path '/Data/ConvDict.mat']);
 dmap = containers.Map(ConvDict.Label, ConvDict.Dict);
-D = dmap('12x12x36');
+D = double(dmap('12x12x36'));
+
+
+%generate graph
+optl = {};
+optl.wsz = [60,60];
+optl.psz = [12,12];
+optl.neig = 50;
+optl.Lformat = 'Sparse';
+optl.Laplacian = 'n';
+optl.Graph.tau = 2;
+optl.Graph.Metric = 'Cosine';
+optl.Graph.GraphType = 'Window';
+optl.Graph.nsz = [7,7];
+optl.Graph.k = [];
+[L,sh] = laplacian_from_image(sh,optl);
+disp('graph generated');
+
+%cropping the image
+sl = sl(1:size(sh,1),1:size(sh,2));
+sref = sref(1:size(sh,1),1:size(sh,2));
+[~,shref] = lowpass(sref,5,15);
+
+
 
 
 
 %%%%%%%%%%%%%%%%%%%%%%% set up parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-mu = 1;
-lambda = 0.25;
+mu = 2;
+lambda = 0.24;
 opt = {};
-opt.Verbose = 0;
-opt.MaxMainIter = 500;
+opt.Verbose = 1;
+opt.MaxMainIter = 50;
 opt.rho = 100*lambda + 1;
 opt.RelStopTol = 1e-3;
 opt.AuxVarObj = 0;
 opt.HighMemSolve = 1;
-% load('wy.mat');
-% y = 3*exp(-2*y);
-%opt.L1Weight = repmat(y,[1,1,32]);
 opt.L1Weight = 1;
+opt.Ysolver = 'fista';
+
+
 %optimize
 [Xnl,~]= cbpdn_L(D,sh,L,lambda,mu,opt);
 disp('nl opt');
 
+opt = rmfield(opt,'Ysolver');
 [Xcn,~] = cbpdn(D,sh,lambda,opt);
 disp('cbpdn');
 

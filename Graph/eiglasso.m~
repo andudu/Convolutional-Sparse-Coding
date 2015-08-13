@@ -43,7 +43,9 @@ A_par = phi*A_hat; %project Z onto nontrivial eigenspace
 A_perp = A-A_par; %perpendicular part
 
 while (k< opt.MaxMainIter)
-    Y_par_hat = bsxfun(@rdivide,A_hat,(mu*E+2*rho))*2*rho; % Y_par update 
+    Y_par_hat = bsxfun(@rdivide,A_hat,(mu*E+2*rho))*2*rho; % Y_par update
+    Y_perp = Y-phi*Y_par_hat;   
+    Jl1 = 
     Y = phi*Y_par_hat + (2*rho/(mu+2*rho))*A_perp;
     Y_bar = shrink(Y + V, lambda/rho);
     V = Y-Y_bar+V;
@@ -51,7 +53,6 @@ while (k< opt.MaxMainIter)
     A_hat = phi'*A;
     A_par = phi*A_hat;
     A_perp = A-A_par;
-    Y_perp = Y-phi*Y_par_hat;
     k = k+1;
     if flag,
         Y_perp = Y-phi*Y_par_hat;
@@ -63,11 +64,9 @@ while (k< opt.MaxMainIter)
         disp(sprintf(sfms, k, Jfn, Jdf, Jl1, r, s));    
         Y_bar_prv = Y_bar;
     end
-    
+
 end
 
- JL(1) = sum(vec(bsxfun(@times,E,Y_par_hat.^2))); 
- JL(2) = sum(vec(Y_perp.*Y_perp));
 
 end
 

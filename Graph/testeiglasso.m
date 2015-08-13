@@ -25,6 +25,7 @@ toc;
 opt1.Y = [];
 opt1.eta = 1.2;
 opt1.MaxMainIter = 50;
+opt1.el = .5;
 opt1.verbose = 1;
 opt1.L1Weight = 1;
 lambda = .1;

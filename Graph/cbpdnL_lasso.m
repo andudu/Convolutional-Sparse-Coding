@@ -1,6 +1,6 @@
-function [Y,U, optinf] = cbpdn_L(D, S, L, lambda, mu, opt)
+function [Y,U, optinf] = cbpdnL_lasso(D, S, L, lambda, mu, opt)
 
-% cbpdn -- Convolutional Basis Pursuit DeNoising
+% cbpdnL_lasso -- Convolutional Basis Pursuit DeNoising with Laplacian
 %
 %         argmin_{x_k} (1/2)||\sum_k d_k * x_k - s||_2^2 +
 %                           lambda \sum_k ||x_k||_1 
@@ -82,8 +82,8 @@ checkopt(opt, defaultopts([]));
 opt = defaultopts(opt);
 
 % Set up status display for verbose operation
-hstr = 'Itn   Fnc       DFid      l1        r         s    ';
-sfms = '%4d %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e';
+hstr = 'Itn   Fnc       DFid      JLp        l1        r         s    ';
+sfms = '%4d %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e';
 nsep = 54;
 if opt.AutoRho,
   hstr = [hstr '   rho  '];
@@ -178,33 +178,34 @@ end
 k = 1;
 
 %check which solver to use for Y update
-yslv = 0;
-if ~isempty(opt.Ysolver)
-    if strcmp(opt.Ysolver, 'admmeig')
-       yslv = 'e';
+if ~isempty(opt.Lformat)
+    if strcmp(opt.Lformat, 'Eig')
+       lf = 'e';
     end
-    if strcmp(opt.Ysolver,'fista')
-        yslv = 'f';
+    if strcmp(opt.Lformat,'M')
+        lf = 'm';
     end
 else
     if isfield(L{1},'phi')
-        yslv = 'e';
+        lf = 'e';
     else
-        yslv = 'f';
+        lf = 'm';
     end    
 end
 
 o = cell(1,length(L)); %cell array of options for mini lasso
 for i = 1:length(L)
-    o{i}.MaxMainIter = 13;
+    o{i}.MaxMainIter = 10;
     o{i}.verbose = 0;
-    if yslv == 'e'
+    if lf == 'e'
         o{i}.V = [];
         o{i}.Y_bar = [];
     end
-    if yslv == 'f'
+    if lf == 'm'
         o{i}.Y = [];
         o{i}.eta = 1.2;
+        o{i}.tol = opt.RelStopTol/10;
+        %o{i}.verbose = 1;
     end
 end
 
@@ -223,32 +224,37 @@ while k <= opt.MaxMainIter & (r > epri | s > edua),
   end
 
   % Solve Y subproblem. Use one of the Mini Lasso Solver
-  if yslv == 'e'  %reshapes!! Careful with the direction
+  if lf == 'e'  %reshapes!! Careful with the direction
+      JL = [0,0];
       for i = 1:length(L)
           Ltemp = L{i};
           a = Xr+U;
           I1 = Ltemp.ind1(1):Ltemp.ind2(1);
           I2 = Ltemp.ind1(2):Ltemp.ind2(2);
-          [temp,o{i}.V] = eiglasso(Ltemp.phi,Ltemp.E,reshape(permute(a(I1,I2,:),[2,1,3]),length(I1)*length(I2) ...
+          [temp,o{i}.V,Jltemp] = eiglasso(Ltemp.phi,Ltemp.E,reshape(permute(a(I1,I2,:),[2,1,3]),length(I1)*length(I2) ...
               ,size(a,3)),lambda,mu,rho,o{i}); % warm starting
+          JL = JL + Jltemp;
           o{i}.Y_bar = temp;
           temp = reshape(temp,length(I1),length(I2),size(a,3));
           Y(I1,I2,:) = permute(temp,[2,1,3]);
           clear a;
       end
+      JLp = JL(1)+JL(2);
   end
   
-  if yslv == 'f'
-      Ltemp = L{i};
-      a = Xr+U;
-      I1 = Ltemp.ind1(1):Ltemp.ind2(1);
-      I2 = Ltemp.ind1(2):Ltemp.ind2(2);
-      [temp,~] = lasso_fista(Ltemp.M,reshape(permute(a(I1,I2,:),[2,1,3]),length(I1)*length(I2) ...
-          ,size(a,3)),lambda,mu,rho,o{i}); % warm starting
-      o{i}.Y = temp;
-      temp = reshape(temp,length(I1),length(I2),size(a,3));
-      Y(I1,I2,:) = permute(temp,[2,1,3]);
-      clear a;
+  if lf == 'm'
+      for i = 1:length(L)
+          Ltemp = L{i};
+          a = Xr+U;
+          I1 = Ltemp.ind1(1):Ltemp.ind2(1);
+          I2 = Ltemp.ind1(2):Ltemp.ind2(2);
+          [temp,o{i}.el] = lasso_fista(Ltemp.M,reshape(permute(a(I1,I2,:),[2,1,3]),length(I1)*length(I2) ...
+              ,size(a,3)),lambda,mu,rho,o{i}); % warm starting
+          o{i}.Y = temp;
+          temp = reshape(temp,length(I1),length(I2),size(a,3));
+          Y(I1,I2,:) = permute(temp,[2,1,3]);
+          clear a;
+      end
   end
   
   
@@ -264,7 +270,7 @@ while k <= opt.MaxMainIter & (r > epri | s > edua),
     Jdf = sum(vec(abs(sum(bsxfun(@times,Df,Xf),3)-Sf).^2))/(2*xsz(1)*xsz(2));
     Jl1 = sum(abs(vec(bsxfun(@times, opt.L1Weight, X))));
   end
-  Jfn = Jdf + lambda*Jl1;
+  Jfn = Jdf + lambda*Jl1 + .5*mu*JLp;
 
   nX = norm(X(:)); nY = norm(Y(:)); nU = norm(U(:));
   if opt.StdResiduals,
@@ -286,9 +292,9 @@ while k <= opt.MaxMainIter & (r > epri | s > edua),
   optinf.itstat = [optinf.itstat; [k Jfn Jdf Jl1 r s epri edua rho tk]];
   if opt.Verbose,
     if opt.AutoRho,
-      disp(sprintf(sfms, k, Jfn, Jdf, Jl1, r, s, rho));
+      disp(sprintf(sfms, k, Jfn, Jdf, JLp, Jl1, r, s, rho));
     else
-      disp(sprintf(sfms, k, Jfn, Jdf, Jl1, r, s));
+      disp(sprintf(sfms, k, Jfn, Jdf,JLp, Jl1, r, s));
     end
   end
 
@@ -361,8 +367,8 @@ function opt = defaultopts(opt)
   if ~isfield(opt,'MaxMainIter'),
     opt.MaxMainIter = 1000;
   end
-  if ~isfield(opt,'Ysolver'),
-      opt.Ysolver = [];
+  if ~isfield(opt,'Lformat'),
+      opt.Lformat = [];
   end
   if ~isfield(opt,'AbsStopTol'),
     opt.AbsStopTol = 0;

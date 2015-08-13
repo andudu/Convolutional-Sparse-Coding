@@ -5,13 +5,13 @@
 %setting options for Graph Laplacian
 optl = {};
 optl.wsz = [60,60];
-optl.psz = [12,12];
-optl.neig = 50;
-optl.Lformat = 'Full';
+optl.psz = [8,8];
+optl.neig = [];
+optl.Lformat = 'Sparse';
 optl.Laplacian = 'n';
-optl.Graph.tau = 3;
+optl.Graph.tau = 2;
 optl.Graph.Metric = 'Cosine';
-optl.Graph.GraphType = 'Full';
+optl.Graph.GraphType = 'Window';
 optl.Graph.nsz = [7,7];
 optl.Graph.k = [];
 
@@ -21,7 +21,7 @@ psz = optl.psz;
 stpsz = [1,1];
 
 
-Dversion = 'lenapatch+noise';
+Dversion = 'longshortline+noise';
 Wversion = 0;
 eigop = 1;
 %%%%%%%%%%%%%%%%%%   Generating Data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -157,39 +157,39 @@ end
 % 
 % 
 %visualizing the eigenvector, eigenvalues
-if(eigop)
-    neig = optl.neig;
-    Xeig = zeros(optl.wsz(1),optl.wsz(2),neig);
-    for i = 1:neig
-        foo = reshape(phi(:,i),optl.wsz(1),optl.wsz(2));
-        Xeig(:,:,i) = foo';
-    end
-    o.colorbar = 0;
-    square_plot(Xeig,o);
-    figure;
-    plot(E,'r');
-end
-
-
-figure;
-a = L{1}.M;
-for i = 1:size(a,1)
-    a(i,i) = 0;
-end
-imagesc(-a);
-colorbar;
-title('Weight Matrix');
-
-figure;
-spy(a);
-
-
-figure;
-aa = sum(abs(a),2);
-aa = reshape(aa,optl.wsz(1),optl.wsz(2))';
-imagesc(aa);
-colorbar;
-title('Node Degree');
+% if(eigop)
+%     neig = optl.neig;
+%     Xeig = zeros(optl.wsz(1),optl.wsz(2),neig);
+%     for i = 1:neig
+%         foo = reshape(phi(:,i),optl.wsz(1),optl.wsz(2));
+%         Xeig(:,:,i) = foo';
+%     end
+%     o.colorbar = 0;
+%     square_plot(Xeig,o);
+%     figure;
+%     plot(E,'r');
+% end
+% 
+% 
+% figure;
+% a = L{1}.M;
+% for i = 1:size(a,1)
+%     a(i,i) = 0;
+% end
+% imagesc(-a);
+% colorbar;
+% title('Weight Matrix');
+% 
+% figure;
+% spy(a);
+% 
+% 
+% figure;
+% aa = sum(abs(a),2);
+% aa = reshape(aa,optl.wsz(1),optl.wsz(2))';
+% imagesc(aa);
+% colorbar;
+% title('Node Degree');
 
 % 
 
@@ -197,48 +197,51 @@ title('Node Degree');
 % %%%%%%%%%%%%%%%%%%  Testing by Denoising Experiment %%%%%%%%%%%%%%%%%%%%%%%
 % 
 % % cbpdn with graph regularization
-% mu = 4;
-% lambda = .2;
-% opt = {};
-% opt.Verbose = 1;
-% opt.MaxMainIter = 40;
-% opt.rho = 100*lambda + 1;
-% opt.RelStopTol = 2e-3;
-% opt.AuxVarObj = 0;
-% opt.HighMemSolve = 1;
-% opt.L1Weight = 1;
-% 
-% 
-% 
-% % Load dictionary
-% load([sporco_path '/Data/ConvDict.mat']);
-% dmap = containers.Map(ConvDict.Label, ConvDict.Dict);
-% D = dmap('12x12x36');
-% D = double(D);
-% 
-% opt.Ysolver = 'fista';
-% [Xnl,~]= cbpdn_L(D,s,L,lambda,mu,opt);
-% 
-% [Xcn,~] = cbpdn(D,s,lambda,opt);
-% 
-% % reconstructing conv
-% scnv = @(d,x) ifft2(sum(bsxfun(@times, fft2(d, size(x,1), size(x,2)), ...
-%                                fft2(x)),3), 'symmetric');
-% shrecnl = scnv(D,Xnl);
-% figure; imagesc(sn); colorbar; title('noisy image'); colormap(gray);
-% figure; imagesc(s); colorbar; title('noisy image high'); colormap(gray);
-% 
-% 
-% figure; imagesc(shrecnl); colorbar; title('nonlocal high rec'); colormap(gray);
-% figure; imagesc(shrecnl+sl); colorbar; title('nonlocal rec'); colormap(gray);
-% figure; imagesc(sum3(abs(Xnl))); colorbar; title('nonlocal coef');colormap(gray);
-% 
-% 
-% shrec = scnv(D,Xcn);
-% 
-% figure; imagesc(shrec); colorbar; title('conv high rec'); colormap(gray);
-% figure; imagesc(shrec+sl); colorbar; title('conv rec'); colormap(gray);
-% figure; imagesc(sum3(abs(Xcn))); colorbar; title('conv coef');colormap(gray);
+mu = .8;
+lambda = .23;
+
+opt = {};
+opt.Verbose = 1;
+opt.MaxMainIter = 40;
+opt.rho = 100*lambda + 1;
+opt.sigma = opt.rho;
+opt.RelStopTol = 2e-3;
+opt.AuxVarObj = 0;
+opt.HighMemSolve = 1;
+opt.L1Weight = 1;
+
+
+
+% Load dictionary
+load([sporco_path '/Data/ConvDict.mat']);
+dmap = containers.Map(ConvDict.Label, ConvDict.Dict);
+D = dmap('8x8x32');
+D = double(D);
+
+opt.Lformat = optl.Lformat;
+
+[Xnl,~]= cbpdn_L(D,s,L,lambda,mu,opt);
+
+[Xcn,~] = cbpdn(D,s,lambda,opt);
+
+% reconstructing conv
+scnv = @(d,x) ifft2(sum(bsxfun(@times, fft2(d, size(x,1), size(x,2)), ...
+                               fft2(x)),3), 'symmetric');
+shrecnl = scnv(D,Xnl);
+figure; imagesc(sn); colorbar; title('noisy image'); colormap(gray);
+figure; imagesc(s); colorbar; title('noisy image high'); colormap(gray);
+
+
+figure; imagesc(shrecnl); colorbar; title('nonlocal high rec'); colormap(gray);
+figure; imagesc(shrecnl+sl); colorbar; title('nonlocal rec'); colormap(gray);
+figure; imagesc(sum3(abs(Xnl))); colorbar; title('nonlocal coef');colormap(gray);
+
+
+shrec = scnv(D,Xcn);
+
+figure; imagesc(shrec); colorbar; title('conv high rec'); colormap(gray);
+figure; imagesc(shrec+sl); colorbar; title('conv rec'); colormap(gray);
+figure; imagesc(sum3(abs(Xcn))); colorbar; title('conv coef');colormap(gray);
 
 
 
