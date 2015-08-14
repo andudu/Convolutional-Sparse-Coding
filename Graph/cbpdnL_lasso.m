@@ -181,8 +181,7 @@ k = 1;
 if ~isempty(opt.Lformat)
     if strcmp(opt.Lformat, 'Eig')
        lf = 'e';
-    end
-    if strcmp(opt.Lformat,'M')
+    else
         lf = 'm';
     end
 else
@@ -243,6 +242,7 @@ while k <= opt.MaxMainIter & (r > epri | s > edua),
   end
   
   if lf == 'm'
+      JLp = 0;
       for i = 1:length(L)
           Ltemp = L{i};
           a = Xr+U;
@@ -250,6 +250,7 @@ while k <= opt.MaxMainIter & (r > epri | s > edua),
           I2 = Ltemp.ind1(2):Ltemp.ind2(2);
           [temp,o{i}.el] = lasso_fista(Ltemp.M,reshape(permute(a(I1,I2,:),[2,1,3]),length(I1)*length(I2) ...
               ,size(a,3)),lambda,mu,rho,o{i}); % warm starting
+          JLp = trace(temp'*Ltemp.M * temp) +JLp;
           o{i}.Y = temp;
           temp = reshape(temp,length(I1),length(I2),size(a,3));
           Y(I1,I2,:) = permute(temp,[2,1,3]);

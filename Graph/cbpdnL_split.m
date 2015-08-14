@@ -78,7 +78,7 @@ function [Z,U,optinf] = cbpdnL_split(D, S, L, lambda, mu, opt)
 if nargin < 6,
   opt = [];
 end
-checkopt(opt, defaultopts([]));
+%checkopt(opt, defaultopts({}));
 opt = defaultopts(opt);
 optinf = [];
 % Set up status display for verbose operation
@@ -231,13 +231,14 @@ if lf == 'm'
     A = {};
     I1 = L{1}.ind1(1):L{1}.ind2(1);
     I2 = L{1}.ind1(2):L{1}.ind2(2);
-    sz = [length(I2),length(I1),size(Y,3)];
+    sz = [length(I2)*length(I1),size(Y,3)];
+    usz = length(I2)*length(I1)*size(Y,3);
     for i = 1:length(L)
-        A{i} = speye(size(L{i}.M))*sigma + mu*L{i}.M;
+        A{i} = speye(size(L{i}.M))*sigma+ mu*L{i}.M;
     end
     Aop = {};
     for i = 1:length(L)
-        temp = @(u) A{i}*(reshape(u,sz));
+        temp = @(u) reshape(A{i}*(reshape(u,sz)),usz,1);
         Aop{i} = temp;
     end
     zcgtol = opt.RelStopTol/10;
@@ -297,7 +298,8 @@ while k <= opt.MaxMainIter & (rz > epriz | sz > eduaz) & (ry > epriy | sy > edua
       for i = 1:length(L)
           I1 = L{i}.ind1(1):L{i}.ind2(1);
           I2 = L{i}.ind1(2):L{i}.ind2(2);
-          temp =  pcg(Aop{i},sigma*vec(permute(a(I1,I2,:),[2,1,3])),zcgtol);
+          [temp,~] =  pcg(Aop{i},sigma*reshape(permute(a(I1,I2,:),[2,1,3]),length(I1)*length(I2)*size(a,3),1),zcgtol);
+          temp = reshape(temp,length(I1)*length(I2),size(a,3));
           if opt.Verbose,
               JLp = JLp + trace(temp'*L{i}.M*temp);
           end
@@ -407,10 +409,27 @@ while k <= opt.MaxMainIter & (rz > epriz | sz > eduaz) & (ry > epriy | sy > edua
       rsf = 1;
       if rz > opt.SigmaRsdlTarget*opt.SigmaRsdlRatio*sz, rsf = sigmamlt; end
       if sz > (opt.SigmaRsdlRatio/opt.SigmaRsdlTarget)*rz, rsf = 1/sigmamlt; end
-      sigma = rsf*sigma;
-      V = V/rsf;
-      if opt.HighMemSolve && rsf ~= 1,
-        C = bsxfun(@rdivide, Df, sum(Df.*conj(Df), 3) + rho + sigma);
+      if rsf ~= 1
+          sigma = rsf*sigma;
+          V = V/rsf;
+          if opt.HighMemSolve && rsf ~= 1,
+              C = bsxfun(@rdivide, Df, sum(Df.*conj(Df), 3) + rho + sigma);
+          end
+          if lf == 'm'
+              A = {};
+              I1 = L{1}.ind1(1):L{1}.ind2(1);
+              I2 = L{1}.ind1(2):L{1}.ind2(2);
+              sz = [length(I2)*length(I1),size(Y,3)];
+              usz = length(I2)*length(I1)*size(Y,3);
+              for i = 1:length(L)
+                  A{i} = speye(size(L{i}.M))*sigma+ mu*L{i}.M;
+              end
+              Aop = {};
+              for i = 1:length(L)
+                  temp = @(u) reshape(A{i}*(reshape(u,sz)),usz,1);
+                  Aop{i} = temp;
+              end
+          end
       end
     end
   end
