@@ -9,10 +9,10 @@ optl.psz = [8,8];
 optl.neig = 300;
 optl.Lformat = 'Sparse';
 optl.Laplacian = 'n';
-optl.Graph.tau = 5;
+optl.Graph.tau = 10;
 optl.Graph.Metric = 'Cosine';
 optl.Graph.GraphType = 'Window';
-optl.Graph.nsz = [6,6];
+optl.Graph.nsz = [5,5];
 optl.Graph.k = [];
 
 
@@ -23,7 +23,7 @@ stpsz = [1,1];
 
 Dversion = 'simpleline+noise';
 Wversion = 0;
-eigop = 0;
+eigop = 1;
 %%%%%%%%%%%%%%%%%%   Generating Data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if strcmp(Dversion, 'simpleline'),
@@ -71,29 +71,6 @@ if strcmp(Dversion, 'longshortline+noise'),
     s = sh;
 end
 
-
-if strcmp(Dversion, 'lenapatch'),
-    %patch from lena
-    s = double(stdimage('lena.grey')) / 255;
-    s = imresize(s,.5);
-    s_ref = s(50:1:imsz(1)+50-1,160:1:imsz(2)+160-1);
-    sn = s(50:1:imsz(1)+50-1,160:1:imsz(2)+160-1);
-    [sl,sh] = lowpass(s,7,15);
-    s = sh(50:1:imsz(1)+50-1,160:1:imsz(2)+160-1);
-    sl = sl(50:1:imsz(1)+50-1,160:1:imsz(2)+160-1);
-end
-
-if strcmp(Dversion, 'lenapatch+noise'),
-    %patch from lena
-    s = double(stdimage('lena.grey')) / 255;
-    s = imresize(s,.5);
-    s_ref = s(50:1:imsz(1)+50-1,160:1:imsz(2)+160-1);
-    s = s+randn(size(s))*.1;
-    sn = s(50:1:imsz(1)+50-1,160:1:imsz(2)+160-1);
-    [sl,sh] = lowpass(s,7,15);
-    s = sh(50:1:imsz(1)+50-1,160:1:imsz(2)+160-1);
-    sl = sl(50:1:imsz(1)+50-1,160:1:imsz(2)+160-1);
-end
 
 
 %%%%%%%%%%%%%%%%%   Building the Graph Weights %%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -153,51 +130,6 @@ if Wversion == 0
     end
 end
 
-%%%%%%%%%%%%%%%%%%%%% Visualizing and Testing Laplacian%%%%%%%%%%%%%%%%%%%%
-% 
-% 
-%visualizing the eigenvector, eigenvalues
-% if(eigop)
-%     neig = optl.neig;
-%     Xeig = zeros(optl.wsz(1),optl.wsz(2),neig);
-%     for i = 1:neig
-%         foo = reshape(phi(:,i),optl.wsz(1),optl.wsz(2));
-%         Xeig(:,:,i) = foo';
-%     end
-%     o.colorbar = 0;
-%     square_plot(Xeig,o);
-%     figure;
-%     plot(E,'r');
-% end
-% 
-% 
-% 
-a = L{1}.M;
-for i = 1:size(a,1)
-    a(i,i) = 0;
-end
-
-% % figure;
-% % imagesc(-a);
-% % colorbar;
-% % title('Weight Matrix');
-% % 
-% % figure;
-% % spy(a);
-% 
-% 
-% figure;
-% aa = sum(abs(a),2);
-% aa = reshape(aa,optl.wsz(1),optl.wsz(2))';
-% imagesc(aa);
-% colorbar;
-% title('Node Degree');
-
-% 
-optw.imsz = imsz ;
-optw.psz = psz;
-optw.BackgroundImage = s;
-showweights([35,27],-a,optw);
 
 
 % % %%%%%%%%%%%%%%%%%%  Testing by Denoising Experiment %%%%%%%%%%%%%%%%%%%%%%%
@@ -249,8 +181,3 @@ showweights([35,27],-a,optw);
 % figure; imagesc(shrec+sl); colorbar; title('conv rec'); colormap(gray);
 % figure; imagesc(sum3(abs(Xcn))); colorbar; title('conv coef');colormap(gray);
 % 
-
-
-
-
-

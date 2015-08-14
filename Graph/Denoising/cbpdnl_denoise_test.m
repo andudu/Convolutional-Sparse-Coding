@@ -20,8 +20,8 @@ D = double(dmap('12x12x36'));
 optl = {};
 optl.wsz = [60,60];
 optl.psz = [12,12];
-optl.neig = 60;
-optl.Lformat = 'Eig';
+optl.neig = 30;
+optl.Lformat = 'Sparse';
 optl.Laplacian = 'n';
 optl.Graph.tau = 2;
 optl.Graph.Metric = 'Cosine';
@@ -31,10 +31,6 @@ optl.Graph.k = [];
 [L,sh] = laplacian_from_image(sh,optl);
 disp('graph generated');
 
-
-for i = 1:length(L)
-    L{i}.E = 1.5*L{i}.E.^3;
-end
 
 
 %cropping the image
@@ -48,8 +44,8 @@ sref = sref(1:size(sh,1),1:size(sh,2));
 
 %%%%%%%%%%%%%%%%%%%%%%% set up parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-mu = 2;
-lambda = 0.15;
+mu = 1;
+lambda = 0.2;
 opt = {};
 opt.Verbose = 1;
 opt.MaxMainIter = 50;

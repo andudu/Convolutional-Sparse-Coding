@@ -172,11 +172,10 @@ end
 % 
 % 
 % 
-a = L{1}.M;
-for i = 1:size(a,1)
-    a(i,i) = 0;
-end
-
+% a = L{1}.M;
+% for i = 1:size(a,1)
+%     a(i,i) = 0;
+% end
 % % figure;
 % % imagesc(-a);
 % % colorbar;
@@ -194,10 +193,7 @@ end
 % title('Node Degree');
 
 % 
-optw.imsz = imsz ;
-optw.psz = psz;
-optw.BackgroundImage = s;
-showweights([35,27],-a,optw);
+showweights([35,27],
 
 
 % % %%%%%%%%%%%%%%%%%%  Testing by Denoising Experiment %%%%%%%%%%%%%%%%%%%%%%%
