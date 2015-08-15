@@ -71,9 +71,7 @@ end
 
 
 if strcmp(opt.GraphType, 'SpMask') %add a spatial masking (gaussian for now)
-    nsz = opt.nsz;
-    coefsz = opt.coefsz;     
-    W_mask = gaussianmask_gen(nsz,coefsz);
+    W_mask = gaussianmask_gen(nsz
     for iter = 1:size(W,1);
         if nargin == 2
             Ind = patchind(iter,nsz,coefsz);
@@ -86,38 +84,10 @@ if strcmp(opt.GraphType, 'SpMask') %add a spatial masking (gaussian for now)
     end
     if size(W,1) == size(W,2)
         W = max(W,W');  
-        W = W_mask.*W;
-    else
-        W = W_mask(opt.xind,:).*W;
-    end
-        
+    end    
     return;
 end
 
-
-if strcmp(opt.GraphType, 'SpInterpolate') %add a spatial masking (gaussian for now)
-    nsz = opt.nsz;
-    coefsz = opt.coefsz;     
-    W_mask = gaussianmask_gen(nsz,coefsz);
-    for iter = 1:size(W,1);
-        if nargin == 2
-            Ind = patchind(iter,nsz,coefsz);
-        else
-            Ind = patchind(opt.xind,nsz,coefsz);
-        end
-        v = W(iter,Ind);
-        W(iter,:) = 0;
-        W(iter,Ind) = v;
-    end
-    if size(W,1) == size(W,2)
-        W = max(W,W');  
-        W = W_mask.*W;
-    else
-        W = W_mask(opt.xind,:).*W;
-    end
-        
-    return;
-end
 
 
 

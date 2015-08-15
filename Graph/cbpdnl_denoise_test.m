@@ -21,9 +21,9 @@ optl = {};
 optl.wsz = [60,60];
 optl.psz = [12,12];
 optl.neig = 60;
-optl.Lformat = 'Eig';
+optl.Lformat = 'Sparse';
 optl.Laplacian = 'n';
-optl.Graph.tau = 2;
+optl.Graph.tau = 1;
 optl.Graph.Metric = 'Cosine';
 optl.Graph.GraphType = 'Window';
 optl.Graph.nsz = [9,9];
@@ -31,10 +31,6 @@ optl.Graph.k = [];
 [L,sh] = laplacian_from_image(sh,optl);
 disp('graph generated');
 
-
-for i = 1:length(L)
-    L{i}.E = 1.5*L{i}.E.^3;
-end
 
 
 %cropping the image
@@ -48,12 +44,12 @@ sref = sref(1:size(sh,1),1:size(sh,2));
 
 %%%%%%%%%%%%%%%%%%%%%%% set up parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-mu = 2;
-lambda = 0.15;
+mu = .6;
+lambda = 0.26;
 opt = {};
 opt.Verbose = 1;
 opt.MaxMainIter = 50;
-opt.rho = 100*lambda + 1;
+opt.rho = 10;
 opt.RelStopTol = 1e-3;
 opt.AuxVarObj = 0;
 opt.HighMemSolve = 1;

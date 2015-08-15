@@ -1,7 +1,7 @@
 % eigvector test: 
+
 % Testing effects of Graph Parameters on Eigenvectors and Eigenvalues
 
-%script for testing simple graphs on an image of a line.
 
 %%%%%%%%%%%%%%%%%% Setting the Parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

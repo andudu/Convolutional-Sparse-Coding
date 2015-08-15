@@ -8,19 +8,19 @@ optl.wsz = [60,60];
 optl.psz = [8,8];
 optl.neig = 300;
 optl.Lformat = 'Full';
-optl.Laplacian = 'u';
-optl.Graph.tau = 3;
+optl.Laplacian = 'n';
+optl.Graph.tau = 1;
 optl.Graph.Metric = 'Cosine';
-optl.Graph.GraphType = 'Full';
-optl.Graph.nsz = [8,8];
+optl.Graph.GraphType = 'Window';
+optl.Graph.nsz = [10,10];
 optl.Graph.k = [];
 
 
 imsz = optl.wsz+optl.psz-[1,1] ;
 psz = optl.psz;
 stpsz = [1,1];
-
-
+load('stdnoise.mat');
+n = r_noise(1:imsz(1),1:imsz(2));
 Dversion = 'lenapatch+noise';
 Wversion = 0;
 %%%%%%%%%%%%%%%%%%   Generating Data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -40,7 +40,7 @@ if strcmp(Dversion, 'simpleline+noise'),
     s = zeros(imsz);
     s(35:36,:) = 1;
     s_ref = s;
-    s = s+randn(size(s))*.1;
+    s = s+n;
     [sl,sh] = lowpass(s,7,15);   
     sn = s;
     s = sh;
@@ -64,7 +64,7 @@ if strcmp(Dversion, 'longshortline+noise'),
     s(35:36,:) = 1;
     s(45:45,32:36) = 1;
     s_ref = s;
-    s = s+randn(size(s))*.1;
+    s = s+n;
     [sl,sh] = lowpass(s,7,15);    
     sn = s;
     s = sh;
@@ -87,7 +87,7 @@ if strcmp(Dversion, 'lenapatch+noise'),
     s = double(stdimage('lena.grey')) / 255;
     s = imresize(s,.5);
     s_ref = s(50:1:imsz(1)+50-1,160:1:imsz(2)+160-1);
-    s = s+randn(size(s))*.1;
+    s = s+r_noise;
     sn = s(50:1:imsz(1)+50-1,160:1:imsz(2)+160-1);
     [sl,sh] = lowpass(s,7,15);
     s = sh(50:1:imsz(1)+50-1,160:1:imsz(2)+160-1);
@@ -149,70 +149,57 @@ if Wversion == 0
 end
 
 
-a = L{1}.M;
-for i = 1:size(a,1)
-    a(i,i) = 0;
-end
-
-%test1;
-optw.imsz = imsz ;
-optw.psz = psz;
-optw.BackgroundImage = s;
-optw.W = -a;
-ind = [35,45]; % a line
-[s1,s2] = showweights(ind,optw);
-figure; 
-imagesc(s1);
-title('Lub
-
-%test2;
-optw = {};
-[sl,sh] = lowpass(s,6,15);
-imsz = size(sh);
-psz = [12,12];
-s = sh;
-% ind = [51,158]; %This lies on one of the edges
-ind = [35,45]; % This looks like a confetti patch
-optw.imsz = imsz ;
-optw.psz = psz;
-optw.BackgroundImage = s;
-optw.tau = 3;
-optw.Metric = 'Cosine';
-optw.GraphType = 'Full';
-optw.coefsz = imsz - psz + [1,1];
-
-[s1,s2] = showweights(ind,optw);
-figure; 
-imagesc(s1);
-title('weights');
-
-
-
-% %test2;
-% optw = {};
-% s = double(stdimage('lena.grey')) / 255;
-% s = imresize(s,.5);
-% s = s+.1*randn(size(s));
-% [sl,sh] = lowpass(s,6,15);
-% imsz = size(sh);
-% psz = [12,12];
-% s = sh;
-% % ind = [51,158]; %This lies on one of the edges
-% ind = [63,47]; % This looks like a confetti patch
-% optw.imsz = imsz ;
-% optw.psz = psz;
-% optw.BackgroundImage = s;
-% optw.tau = 2;
-% optw.Metric = 'Cosine';
-% optw.GraphType = 'Full';
-% optw.nsz = [12,12];
-% optw.coefsz = imsz - psz + [1,1];
+% %%%%%%%%%%%%%%%%%%  Testing by Denoising Experiment %%%%%%%%%%%%%%%%%%%%%%%
 % 
-% [s1,s2] = showweights(ind,optw);
-% figure; 
-% imagesc(s1);
-% figure;
-% imagesc(s2);
+% % cbpdn with graph regularization
+mu = .8;
+lambda = .23;
+
+opt = {};
+opt.Verbose = 1;
+opt.MaxMainIter = 40;
+opt.rho = 100*lambda + 1;
+opt.sigma = opt.rho;
+opt.RelStopTol = 2e-3;
+opt.AuxVarObj = 0;
+opt.HighMemSolve = 1;
+opt.L1Weight = 1;
+
+
+
+% Load dictionary
+load([sporco_path '/Data/ConvDict.mat']);
+dmap = containers.Map(ConvDict.Label, ConvDict.Dict);
+D = dmap('8x8x32');
+D = double(D);
+
+opt.Lformat = optl.Lformat;
+scnv = @(d,x) ifft2(sum(bsxfun(@times, fft2(d, size(x,1), size(x,2)), ...
+                               fft2(x)),3), 'symmetric');
+
+
+
+[Xnl,~]= cbpdn_L(D,s,L,lambda,mu,opt);
+
+
+
+% reconstructing conv
+figure; imagesc(sn); colorbar; title('noisy image'); colormap(gray);
+figure; imagesc(s); colorbar; title('noisy image high'); colormap(gray);
+
+
+figure; imagesc(shrecnl); colorbar; title('nonlocal high rec'); colormap(gray);
+figure; imagesc(shrecnl+sl); colorbar; title('nonlocal rec'); colormap(gray);
+figure; imagesc(sum3(abs(Xnl))); colorbar; title('nonlocal coef');colormap(gray);
+
+
+shrec = scnv(D,Xcn);
+
+figure; imagesc(shrec); colorbar; title('conv high rec'); colormap(gray);
+figure; imagesc(shrec+sl); colorbar; title('conv rec'); colormap(gray);
+figure; imagesc(sum3(abs(Xcn))); colorbar; title('conv coef');colormap(gray);
+
+
 
 
 

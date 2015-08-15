@@ -1,4 +1,5 @@
-% Testing different cbpdnl solver
+% Testing speed, accuracy of 
+% different cbpdnl solvers(ADMM vs Lasso)
 
 %%%%%%%%%%%%%%%%%% Setting the Parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
