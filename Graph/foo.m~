@@ -7,12 +7,12 @@ optl = {};
 optl.wsz = [60,60];
 optl.psz = [8,8];
 optl.neig = 300;
-optl.Lformat = 'Sparse';
-optl.Laplacian = 'n';
-optl.Graph.tau = 5;
+optl.Lformat = 'Full';
+optl.Laplacian = 'u';
+optl.Graph.tau = 3;
 optl.Graph.Metric = 'Cosine';
-optl.Graph.GraphType = 'Window';
-optl.Graph.nsz = [6,6];
+optl.Graph.GraphType = 'Full';
+optl.Graph.nsz = [8,8];
 optl.Graph.k = [];
 
 
@@ -21,9 +21,8 @@ psz = optl.psz;
 stpsz = [1,1];
 
 
-Dversion = 'simpleline+noise';
+Dversion = 'lenapatch+noise';
 Wversion = 0;
-eigop = 0;
 %%%%%%%%%%%%%%%%%%   Generating Data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if strcmp(Dversion, 'simpleline'),
@@ -147,105 +146,73 @@ end
 % Version 0 Choose a scheme specified by optl
 if Wversion == 0
     [L,scrop] = laplacian_from_image(s,optl);
-    if(eigop)
-        [phi,E] = eigs(L{1}.M,optl.neig,'sr');
-        E = diag(E);
-    end
 end
 
-%%%%%%%%%%%%%%%%%%%%% Visualizing and Testing Laplacian%%%%%%%%%%%%%%%%%%%%
+
+a = L{1}.M;
+for i = 1:size(a,1)
+    a(i,i) = 0;
+end
+
+%test1;
+optw.imsz = imsz ;
+optw.psz = psz;
+optw.BackgroundImage = s;
+optw.W = -a;
+ind = [35,45]; % a line
+[s1,s2] = showweights(ind,optw);
+figure; 
+imagesc(s1);
+title('Lub
+
+%test2;
+optw = {};
+[sl,sh] = lowpass(s,6,15);
+imsz = size(sh);
+psz = [12,12];
+s = sh;
+% ind = [51,158]; %This lies on one of the edges
+ind = [35,45]; % This looks like a confetti patch
+optw.imsz = imsz ;
+optw.psz = psz;
+optw.BackgroundImage = s;
+optw.tau = 3;
+optw.Metric = 'Cosine';
+optw.GraphType = 'Full';
+optw.coefsz = imsz - psz + [1,1];
+
+[s1,s2] = showweights(ind,optw);
+figure; 
+imagesc(s1);
+title('weights');
+
+
+
+% %test2;
+% optw = {};
+% s = double(stdimage('lena.grey')) / 255;
+% s = imresize(s,.5);
+% s = s+.1*randn(size(s));
+% [sl,sh] = lowpass(s,6,15);
+% imsz = size(sh);
+% psz = [12,12];
+% s = sh;
+% % ind = [51,158]; %This lies on one of the edges
+% ind = [63,47]; % This looks like a confetti patch
+% optw.imsz = imsz ;
+% optw.psz = psz;
+% optw.BackgroundImage = s;
+% optw.tau = 2;
+% optw.Metric = 'Cosine';
+% optw.GraphType = 'Full';
+% optw.nsz = [12,12];
+% optw.coefsz = imsz - psz + [1,1];
 % 
-% 
-%visualizing the eigenvector, eigenvalues
-% if(eigop)
-%     neig = optl.neig;
-%     Xeig = zeros(optl.wsz(1),optl.wsz(2),neig);
-%     for i = 1:neig
-%         foo = reshape(phi(:,i),optl.wsz(1),optl.wsz(2));
-%         Xeig(:,:,i) = foo';
-%     end
-%     o.colorbar = 0;
-%     square_plot(Xeig,o);
-%     figure;
-%     plot(E,'r');
-% end
-% 
-% 
-% 
-% a = L{1}.M;
-% for i = 1:size(a,1)
-%     a(i,i) = 0;
-% end
-% % figure;
-% % imagesc(-a);
-% % colorbar;
-% % title('Weight Matrix');
-% % 
-% % figure;
-% % spy(a);
-% 
-% 
+% [s1,s2] = showweights(ind,optw);
+% figure; 
+% imagesc(s1);
 % figure;
-% aa = sum(abs(a),2);
-% aa = reshape(aa,optl.wsz(1),optl.wsz(2))';
-% imagesc(aa);
-% colorbar;
-% title('Node Degree');
-
-% 
-showweights([35,27],
-
-
-% % %%%%%%%%%%%%%%%%%%  Testing by Denoising Experiment %%%%%%%%%%%%%%%%%%%%%%%
-% % 
-% % % cbpdn with graph regularization
-% mu = .8;
-% lambda = .23;
-% 
-% opt = {};
-% opt.Verbose = 1;
-% opt.MaxMainIter = 40;
-% opt.rho = 100*lambda + 1;
-% opt.sigma = opt.rho;
-% opt.RelStopTol = 2e-3;
-% opt.AuxVarObj = 0;
-% opt.HighMemSolve = 1;
-% opt.L1Weight = 1;
-% 
-% 
-% 
-% % Load dictionary
-% load([sporco_path '/Data/ConvDict.mat']);
-% dmap = containers.Map(ConvDict.Label, ConvDict.Dict);
-% D = dmap('8x8x32');
-% D = double(D);
-% 
-% opt.Lformat = optl.Lformat;
-% 
-% [Xnl,~]= cbpdn_L(D,s,L,lambda,mu,opt);
-% 
-% [Xcn,~] = cbpdn(D,s,lambda,opt);
-% 
-% % reconstructing conv
-% scnv = @(d,x) ifft2(sum(bsxfun(@times, fft2(d, size(x,1), size(x,2)), ...
-%                                fft2(x)),3), 'symmetric');
-% shrecnl = scnv(D,Xnl);
-% figure; imagesc(sn); colorbar; title('noisy image'); colormap(gray);
-% figure; imagesc(s); colorbar; title('noisy image high'); colormap(gray);
-% 
-% 
-% figure; imagesc(shrecnl); colorbar; title('nonlocal high rec'); colormap(gray);
-% figure; imagesc(shrecnl+sl); colorbar; title('nonlocal rec'); colormap(gray);
-% figure; imagesc(sum3(abs(Xnl))); colorbar; title('nonlocal coef');colormap(gray);
-% 
-% 
-% shrec = scnv(D,Xcn);
-% 
-% figure; imagesc(shrec); colorbar; title('conv high rec'); colormap(gray);
-% figure; imagesc(shrec+sl); colorbar; title('conv rec'); colormap(gray);
-% figure; imagesc(sum3(abs(Xcn))); colorbar; title('conv coef');colormap(gray);
-% 
-
+% imagesc(s2);
 
 
 
