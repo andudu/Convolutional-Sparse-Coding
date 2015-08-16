@@ -7,12 +7,12 @@ optl = {};
 optl.wsz = [60,60];
 optl.psz = [8,8];
 optl.neig = 300;
-optl.Lformat = 'Full';
+optl.Lformat = 'Sparse';
 optl.Laplacian = 'n';
 optl.Graph.tau = 1;
 optl.Graph.Metric = 'Cosine';
 optl.Graph.GraphType = 'Window';
-optl.Graph.nsz = [10,10];
+optl.Graph.nsz = [8,8];
 optl.Graph.k = [];
 
 
@@ -21,8 +21,8 @@ psz = optl.psz;
 stpsz = [1,1];
 load('stdnoise.mat');
 n = r_noise(1:imsz(1),1:imsz(2));
-Dversion = 'longshortline+noise';
-Wversion = 0;
+Dversion = 'simpleline+noise';
+Wversion = 1;
 %%%%%%%%%%%%%%%%%%   Generating Data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if strcmp(Dversion, 'simpleline'),
@@ -104,22 +104,18 @@ if Wversion == 1
     for i = 1:optl.wsz(1)
         for j = 1:optl.wsz(2)
             flind = rec2flat([i,j],imsz,psz,stpsz);
-            if s_ref(i+psz(1)-1,j+psz(2)-1) == 1, % actually a line
-                for k1 = -2:2
-                    for k2 = -2:2
-                        if i+k1>0 && j+k2>0 && i+k1<=optl.wsz(1) && j+k2<= optl.wsz(2)
-                            if s_ref(i+k1+psz(1)-1,j+k2+psz(2)-1) == 1,
-                                flind2 = rec2flat([i+k1,j+k2],imsz,psz,stpsz);
-                                W(flind,flind2) = 1;
-                            end
-                        end
+            if (any(s_ref(i:i+psz(1)-1,j:j+psz(2)-1) == 1)), % actually a patch containing a line
+                for k2 = -5:5 %connect to its 5 horizontal neighbors
+                    if  j+k2>0  && j+k2<= optl.wsz(2)
+                        flind2 = rec2flat([i,j+k2],imsz,psz,stpsz);
+                        W(flind,flind2) = 1;
                     end
                 end
             else
                 for k1 = -1:1
                     for k2 = -1:1
                         if i+k1>0 && j+k2>0 && i+k1<=optl.wsz(1) && j+k2<= optl.wsz(2)
-                            if s_ref(i+k1+psz(2)-1,j+k2+psz(2)-1) == 0,
+                            if ~any(s_ref(i+k1:i+k1+psz(1)-1,j+k2:j+k2+psz(2)-1) == 1), %connect only to 0 patches
                                 flind2 = rec2flat([i+k1,j+k2],imsz,psz,stpsz);
                                 W(flind,flind2) = 1;
                             end
@@ -129,11 +125,11 @@ if Wversion == 1
             end
         end
     end
-    W = W+W';
+    W = max(W,W');
     if strcmp(optl.Laplacian,'n')
-        L = ulap(W);
-    else
         L = nlap(W);
+    else
+        L = ulap(W);
     end
     ind1 = [1,1];
     ind2 = optl.wsz;
@@ -143,7 +139,11 @@ if Wversion == 1
     
 end
 
+L_perfect = L;
+
 % Version 0 Choose a scheme specified by optl
+
+Wversion = 0;
 if Wversion == 0
     [L,scrop] = laplacian_from_image(s,optl);
 end
@@ -152,15 +152,15 @@ end
 % %%%%%%%%%%%%%%%%%%  Testing by Denoising Experiment %%%%%%%%%%%%%%%%%%%%%%%
 % 
 % % cbpdn with graph regularization
-mu = .8;
-lambda = .23;
+mu = 1;
+lambda = .2;
 
 opt = {};
 opt.Verbose = 1;
 opt.MaxMainIter = 50;
 opt.rho = 100*lambda + 1;
 opt.sigma = opt.rho;
-opt.RelStopTol = 2e-3;
+opt.RelStopTol = 1e-3;
 opt.AuxVarObj = 0;
 opt.HighMemSolve = 1;
 opt.L1Weight = 1;
@@ -181,44 +181,62 @@ scnv = @(d,x) ifft2(sum(bsxfun(@times, fft2(d, size(x,1), size(x,2)), ...
 
 
 
+% 
+% % reconstructing conv
+% figure; imagesc(sn); colorbar; title('noisy image'); colormap(gray);
+% figure; imagesc(s); colorbar; title('noisy image high'); colormap(gray);
 
-% reconstructing conv
-figure; imagesc(sn); colorbar; title('noisy image'); colormap(gray);
-figure; imagesc(s); colorbar; title('noisy image high'); colormap(gray);
 
-% % nonlocal
-% [Xnl,~]= cbpdn_L(D,s,L,lambda,mu,opt);
+
+% %nonlocal
+% [Xnl,~]= cbpdnl_lasso(D,s,L,lambda,mu,opt);
 % shrecnl = scnv(D,Xnl);
 % figure; imagesc(shrecnl); colorbar; title('nonlocal high rec'); colormap(gray);
 % figure; imagesc(shrecnl+sl); colorbar; title('nonlocal rec'); colormap(gray);
 % figure; imagesc(sum3(abs(Xnl))); colorbar; title('nonlocal coef');colormap(gray);
 % % % 
-% 
-% % regular
-% [Xcn,~] = cbpdn(D,s,lambda,opt);
-% shrec = scnv(D,Xcn);
-% figure; imagesc(shrec); colorbar; title('conv high rec'); colormap(gray);
-% figure; imagesc(shrec+sl); colorbar; title('conv rec'); colormap(gray);
-% figure; imagesc(sum3(abs(Xcn))); colorbar; title('conv coef');colormap(gray);
-% % % 
 
-% % gradient
-% [Xgrd,~] = cbpdngr(D,s,lambda,mu,opt);
-% shrec = scnv(D,Xgrd);
-% figure; imagesc(shrec); colorbar; title('conv grd high rec'); colormap(gray);
-% figure; imagesc(shrec+sl); colorbar; title('conv grd rec'); colormap(gray);
-% figure; imagesc(sum3(abs(Xgrd))); colorbar; title('conv grd coef');colormap(gray);
-% % % 
-
-
-% x2
-opt.HighMemSolve = 1;
-[Xx2,~] = cbpdnx2(D,s,lambda,mu,opt);
-shrec = scnv(D,Xx2);
-figure; imagesc(shrec); colorbar; title('conv x2 high rec'); colormap(gray);
-figure; imagesc(shrec+sl); colorbar; title('conv x2 rec'); colormap(gray);
-figure; imagesc(sum3(abs(Xx2))); colorbar; title('conv x2 coef');colormap(gray);
+% regular
+[Xcn,~] = cbpdn(D,s,lambda,opt);
+shrec = scnv(D,Xcn);
+figure; imagesc(shrec); colorbar; title('conv high rec'); colormap(gray);
+figure; imagesc(shrec+sl); colorbar; title('conv rec'); colormap(gray);
+figure; imagesc(sum3(abs(Xcn))); colorbar; title('conv coef');colormap(gray);
 % % 
+
+
+
+% nonlocal perfect
+[Xnlp,~]= cbpdnl_lasso(D,s,L_perfect,lambda,mu,opt);
+shrecnl = scnv(D,Xnlp);
+figure; imagesc(shrecnl); colorbar; title('nonlocal perfect high rec'); colormap(gray);
+figure; imagesc(shrecnl+sl); colorbar; title('nonlocal perfect rec'); colormap(gray);
+figure; imagesc(sum3(abs(Xnlp))); colorbar; title('nonlocal perfect coef');colormap(gray);
+% % 
+
+
+
+% gradient
+mu = mu/4; %normalization
+[Xgrd,~] = cbpdngr(D,s,lambda,mu,opt);
+shrec = scnv(D,Xgrd);
+figure; imagesc(shrec); colorbar; title('conv grd high rec'); colormap(gray);
+figure; imagesc(shrec+sl); colorbar; title('conv grd rec'); colormap(gray);
+figure; imagesc(sum3(abs(Xgrd))); colorbar; title('conv grd coef');colormap(gray);
+% % 
+
+
+
+% 
+% 
+% % x2
+% opt.HighMemSolve = 1;
+% [Xx2,~] = cbpdnx2(D,s,lambda,mu,opt);
+% shrec = scnv(D,Xx2);
+% figure; imagesc(shrec); colorbar; title('conv x2 high rec'); colormap(gray);
+% figure; imagesc(shrec+sl); colorbar; title('conv x2 rec'); colormap(gray);
+% figure; imagesc(sum3(abs(Xx2))); colorbar; title('conv x2 coef');colormap(gray);
+% % % 
 
 
 
