@@ -22,7 +22,7 @@ stpsz = [1,1];
 load('stdnoise.mat');
 n = r_noise(1:imsz(1),1:imsz(2));
 Dversion = 'simpleline+noise';
-Wversion = 1;
+Wversion = 0;
 %%%%%%%%%%%%%%%%%%   Generating Data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if strcmp(Dversion, 'simpleline'),
@@ -136,23 +136,22 @@ if Wversion == 1
     temp = L;
     L = {}; L{1}.ind1 = ind1;
     L{1}.ind2 = ind2; L{1}.M = temp;
-    
+    L_perfect = L;    
 end
 
-L_perfect = L;
 
 % Version 0 Choose a scheme specified by optl
 
-Wversion = 0;
-if Wversion == 0
-    [L,scrop] = laplacian_from_image(s,optl);
-end
+% Wversion = 0;
+% if Wversion == 0
+%     [L,scrop] = laplacian_from_image(s,optl);
+% end
 
 
 % %%%%%%%%%%%%%%%%%%  Testing by Denoising Experiment %%%%%%%%%%%%%%%%%%%%%%%
 % 
 % % cbpdn with graph regularization
-mu = 1;
+mu = .3;
 lambda = .2;
 
 opt = {};
@@ -168,9 +167,7 @@ opt.L1Weight = 1;
 
 
 % Load dictionary
-load([sporco_path '/Data/ConvDict.mat']);
-dmap = containers.Map(ConvDict.Label, ConvDict.Dict);
-D = dmap('8x8x32');
+load('CacheData/Dict_12x12.mat');
 D = double(D);
 
 opt.Lformat = optl.Lformat;
@@ -202,33 +199,31 @@ shrec = scnv(D,Xcn);
 figure; imagesc(shrec); colorbar; title('conv high rec'); colormap(gray);
 figure; imagesc(shrec+sl); colorbar; title('conv rec'); colormap(gray);
 figure; imagesc(sum3(abs(Xcn))); colorbar; title('conv coef');colormap(gray);
+
 % % 
-
-
-
-% nonlocal perfect
-[Xnlp,~]= cbpdnl_lasso(D,s,L_perfect,lambda,mu,opt);
-shrecnl = scnv(D,Xnlp);
-figure; imagesc(shrecnl); colorbar; title('nonlocal perfect high rec'); colormap(gray);
-figure; imagesc(shrecnl+sl); colorbar; title('nonlocal perfect rec'); colormap(gray);
-figure; imagesc(sum3(abs(Xnlp))); colorbar; title('nonlocal perfect coef');colormap(gray);
 % % 
-
-
+% 
+% 
+% % nonlocal perfect
+% [Xnlp,~]= cbpdnl_lasso(D,s,L_perfect,lambda,mu,opt);
+% shrecnl = scnv(D,Xnlp);
+% figure; imagesc(shrecnl); colorbar; title('nonlocal perfect high rec'); colormap(gray);
+% figure; imagesc(shrecnl+sl); colorbar; title('nonlocal perfect rec'); colormap(gray);
+% figure; imagesc(sum3(abs(Xnlp))); colorbar; title('nonlocal perfect coef');colormap(gray);
+% % % 
+% 
+% 
+% 
 
 % gradient
-mu = mu/4; %normalization
 [Xgrd,~] = cbpdngr(D,s,lambda,mu,opt);
 shrec = scnv(D,Xgrd);
 figure; imagesc(shrec); colorbar; title('conv grd high rec'); colormap(gray);
 figure; imagesc(shrec+sl); colorbar; title('conv grd rec'); colormap(gray);
 figure; imagesc(sum3(abs(Xgrd))); colorbar; title('conv grd coef');colormap(gray);
-% % 
-
-
-
 % 
-% 
+
+
 % % x2
 % opt.HighMemSolve = 1;
 % [Xx2,~] = cbpdnx2(D,s,lambda,mu,opt);
@@ -237,6 +232,36 @@ figure; imagesc(sum3(abs(Xgrd))); colorbar; title('conv grd coef');colormap(gray
 % figure; imagesc(shrec+sl); colorbar; title('conv x2 rec'); colormap(gray);
 % figure; imagesc(sum3(abs(Xx2))); colorbar; title('conv x2 coef');colormap(gray);
 % % % 
+
+
+% Reweighted L1
+opt.L1Weight = 1.4*ones(size(s,1),size(s,2),size(D,3));
+opt.L1Weight(30:32,19,:) = 1;
+[Xcn,~] = cbpdn(D,s,lambda,opt);
+shrec = scnv(D,Xcn);
+figure; imagesc(shrec); colorbar; title('conv reweighl1 high rec'); colormap(gray);
+figure; imagesc(shrec+sl); colorbar; title('conv reweighl1 rec'); colormap(gray);
+figure; imagesc(sum3(abs(Xcn))); colorbar; title('conv reweighl1 coef');colormap(gray);
+
+
+% % gradient + Reweighted L1
+mu = mu/4; %normalization
+opt.L1Weight = 2*ones(size(s,1),size(s,2),size(D,3));
+opt.L1Weight(30:32,19,:) = 1;
+[Xgrd,~] = cbpdngr(D,s,lambda,mu,opt);
+shrec = scnv(D,Xgrd);
+figure; imagesc(shrec); colorbar; title('conv grd l1 high rec'); colormap(gray);
+figure; imagesc(shrec+sl); colorbar; title('conv grd rec'); colormap(gray);
+figure; imagesc(sum3(abs(Xgrd))); colorbar; title('conv grd l1 coef');colormap(gray);
+
+
+
+
+
+
+
+
+
 
 
 

@@ -1,0 +1,15 @@
+%script for testing Nystrom
+
+snoise = randn(256,256)*.1;
+sref = double(stdimage('lena.grey')) / 255;
+sref = imresize(sref,.5);
+s = sref+snoise;
+[sl,sh] = lowpass(s,5,15);
+
+
+
+%generate graph
+opt.tau = 1;
+opt.numsample = floor(256*
+[phi,E] = nystrom_n(data,opt);
+disp('graph generated');
