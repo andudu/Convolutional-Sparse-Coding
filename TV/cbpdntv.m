@@ -381,8 +381,8 @@ function opt = defaultopts(opt)
   if ~isfield(opt,'AutoSigma'),
     opt.AutoSigma = 0;
   end
-  if ~isfield(opt,'AutoRhoPeriod'),
-    opt.AutoSigmaPeriod = 10;
+  if ~isfield(opt,'AutoSigmaPeriod'),
+    opt.AutoSigmaPeriod = 5;
   end
   if ~isfield(opt,'SigmaRsdlRatio'),
     opt.SigmaRsdlRatio = 10;

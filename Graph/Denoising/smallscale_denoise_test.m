@@ -6,8 +6,8 @@
 optl = {};
 optl.wsz = [60,60];
 optl.psz = [8,8];
-optl.neig = 300;
-optl.Lformat = 'Sparse';
+optl.neig = 40;
+optl.Lformat = 'Eig';
 optl.Laplacian = 'n';
 optl.Graph.tau = 1;
 optl.Graph.Metric = 'Cosine';
@@ -94,6 +94,8 @@ if strcmp(Dversion, 'lenapatch+noise'),
     sl = sl(50:1:imsz(1)+50-1,160:1:imsz(2)+160-1);
 end
 
+    
+
 
 %%%%%%%%%%%%%%%%%   Building the Graph Weights %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -141,22 +143,35 @@ end
 
 
 % Version 0 Choose a scheme specified by optl
-
+% 
 % Wversion = 0;
 % if Wversion == 0
 %     [L,scrop] = laplacian_from_image(s,optl);
 % end
-
+% 
+% 
+% E1 = []; E2 = [];
+% for i = 1:optl.neig
+%     x = (i/optl.neig);
+%     E1(i) = x^3;
+%     E2(i) = 1-(x-1)^3;
+% end
+% 
+% L1 = L;
+% L2 = L;
+% 
+% L1{1}.E = E1';
+% L2{1}.E = E2';
 
 % %%%%%%%%%%%%%%%%%%  Testing by Denoising Experiment %%%%%%%%%%%%%%%%%%%%%%%
 % 
 % % cbpdn with graph regularization
-mu = .3;
-lambda = .2;
+mu = .05;
+lambda = .15;
 
 opt = {};
 opt.Verbose = 1;
-opt.MaxMainIter = 50;
+opt.MaxMainIter = 200;
 opt.rho = 100*lambda + 1;
 opt.sigma = opt.rho;
 opt.RelStopTol = 1e-3;
@@ -188,73 +203,104 @@ scnv = @(d,x) ifft2(sum(bsxfun(@times, fft2(d, size(x,1), size(x,2)), ...
 % %nonlocal
 % [Xnl,~]= cbpdnl_lasso(D,s,L,lambda,mu,opt);
 % shrecnl = scnv(D,Xnl);
-% figure; imagesc(shrecnl); colorbar; title('nonlocal high rec'); colormap(gray);
-% figure; imagesc(shrecnl+sl); colorbar; title('nonlocal rec'); colormap(gray);
+% % figure; imagesc(shrecnl); colorbar; title('nonlocal high rec'); colormap(gray);
+% % figure; imagesc(shrecnl+sl); colorbar; title('nonlocal rec'); colormap(gray);
+% figure; imagesc(sum3(abs(Xnl))); colorbar; title('nonlocal coef');colormap(gray);
+% % % 
+% 
+% 
+% %nonlocal
+% [Xnl,~]= cbpdnl_lasso(D,s,L2,lambda,mu,opt);
+% shrecnl = scnv(D,Xnl);
+% % figure; imagesc(shrecnl); colorbar; title('nonlocal high rec'); colormap(gray);
+% % figure; imagesc(shrecnl+sl); colorbar; title('nonlocal rec'); colormap(gray);
 % figure; imagesc(sum3(abs(Xnl))); colorbar; title('nonlocal coef');colormap(gray);
 % % % 
 
-% regular
-[Xcn,~] = cbpdn(D,s,lambda,opt);
-shrec = scnv(D,Xcn);
-figure; imagesc(shrec); colorbar; title('conv high rec'); colormap(gray);
-figure; imagesc(shrec+sl); colorbar; title('conv rec'); colormap(gray);
-figure; imagesc(sum3(abs(Xcn))); colorbar; title('conv coef');colormap(gray);
+
+% % % regular
+% [Xcn,~] = cbpdn(D,s,lambda,opt);
+% shrec = scnv(D,Xcn);
+% figure; imagesc(shrec); colorbar; title('conv high rec'); colormap(gray);
+% figure; imagesc(shrec+sl); colorbar; title('conv rec'); colormap(gray);
+% figure; imagesc(sum3(abs(Xcn))); colorbar; title('conv coef');colormap(gray);
+% % 
+
 
 % % 
 % % 
+% % % nonlocal perfect
+% % [Xnlp,~]= cbpdnl_lasso(D,s,L_perfect,lambda,mu,opt);
+% % shrecnl = scnv(D,Xnlp);
+% % figure; imagesc(shrecnl); colorbar; title('nonlocal perfect high rec'); colormap(gray);
+% % figure; imagesc(shrecnl+sl); colorbar; title('nonlocal perfect rec'); colormap(gray);
+% % figure; imagesc(sum3(abs(Xnlp))); colorbar; title('nonlocal perfect coef');colormap(gray);
+% % % % 
+% % 
+% % 
+% % 
 % 
-% 
-% % nonlocal perfect
-% [Xnlp,~]= cbpdnl_lasso(D,s,L_perfect,lambda,mu,opt);
-% shrecnl = scnv(D,Xnlp);
-% figure; imagesc(shrecnl); colorbar; title('nonlocal perfect high rec'); colormap(gray);
-% figure; imagesc(shrecnl+sl); colorbar; title('nonlocal perfect rec'); colormap(gray);
-% figure; imagesc(sum3(abs(Xnlp))); colorbar; title('nonlocal perfect coef');colormap(gray);
+% % % gradient
+% [Xgrd,~] = cbpdngr(D,s,lambda,mu,opt);
+% shrec = scnv(D,Xgrd);
+% % figure; imagesc(shrec); colorbar; title('conv grd high rec'); colormap(gray);
+% % figure; imagesc(shrec+sl); colorbar; title('conv grd rec'); colormap(gray);
+% figure; imagesc(sum3(abs(Xgrd))); colorbar; title('conv grd coef');colormap(gray);
 % % % 
+% % 
 % 
-% 
-% 
-
-% gradient
-[Xgrd,~] = cbpdngr(D,s,lambda,mu,opt);
-shrec = scnv(D,Xgrd);
-figure; imagesc(shrec); colorbar; title('conv grd high rec'); colormap(gray);
-figure; imagesc(shrec+sl); colorbar; title('conv grd rec'); colormap(gray);
-figure; imagesc(sum3(abs(Xgrd))); colorbar; title('conv grd coef');colormap(gray);
-% 
+% % TV regularizer
+% opt.AutoSigma = 1;
+% opt.AutoRho = 1;
+% [Xtv,~] = cbpdntv(D,s,lambda,mu,opt);
+% shrec = scnv(D,Xtv);
+% % figure; imagesc(shrec); colorbar; title('conv TV high rec'); colormap(gray);
+% % figure; imagesc(shrec+sl); colorbar; title('conv TV rec'); colormap(gray);
+% figure; imagesc(sum3(abs(Xtv))); colorbar; title('conv TV coef');colormap(gray);
 
 
 % % x2
 % opt.HighMemSolve = 1;
 % [Xx2,~] = cbpdnx2(D,s,lambda,mu,opt);
 % shrec = scnv(D,Xx2);
-% figure; imagesc(shrec); colorbar; title('conv x2 high rec'); colormap(gray);
-% figure; imagesc(shrec+sl); colorbar; title('conv x2 rec'); colormap(gray);
+% % figure; imagesc(shrec); colorbar; title('conv x2 high rec'); colormap(gray);
+% % figure; imagesc(shrec+sl); colorbar; title('conv x2 rec'); colormap(gray);
 % figure; imagesc(sum3(abs(Xx2))); colorbar; title('conv x2 coef');colormap(gray);
-% % % 
-
+% % % % 
+% 
 
 % Reweighted L1
-opt.L1Weight = 1.4*ones(size(s,1),size(s,2),size(D,3));
+opt.L1Weight = 1.5*ones(size(s,1),size(s,2),size(D,3));
 opt.L1Weight(30:32,19,:) = 1;
+lambda = lambda + .05;
 [Xcn,~] = cbpdn(D,s,lambda,opt);
+lambda = lambda - .05;
 shrec = scnv(D,Xcn);
 figure; imagesc(shrec); colorbar; title('conv reweighl1 high rec'); colormap(gray);
 figure; imagesc(shrec+sl); colorbar; title('conv reweighl1 rec'); colormap(gray);
 figure; imagesc(sum3(abs(Xcn))); colorbar; title('conv reweighl1 coef');colormap(gray);
+% 
 
 
-% % gradient + Reweighted L1
-mu = mu/4; %normalization
-opt.L1Weight = 2*ones(size(s,1),size(s,2),size(D,3));
+% % % gradient + Reweighted L1
+% opt.L1Weight = 1.5*ones(size(s,1),size(s,2),size(D,3));
+% opt.L1Weight(30:32,19,:) = 1;
+% [Xgrd,~] = cbpdngr(D,s,lambda,mu,opt);
+% shrec = scnv(D,Xgrd);
+% figure; imagesc(shrec); colorbar; title('conv grd l1 high rec'); colormap(gray);
+% figure; imagesc(shrec+sl); colorbar; title('conv grd rec'); colormap(gray);
+% figure; imagesc(sum3(abs(Xgrd))); colorbar; title('conv grd l1 coef');colormap(gray);
+
+% % TV regularizer + Reweighed L1
+opt.AutoSigma = 1;
+opt.AutoRho = 1;
+opt.L1Weight = 1.5*ones(size(s,1),size(s,2),size(D,3));
 opt.L1Weight(30:32,19,:) = 1;
-[Xgrd,~] = cbpdngr(D,s,lambda,mu,opt);
-shrec = scnv(D,Xgrd);
-figure; imagesc(shrec); colorbar; title('conv grd l1 high rec'); colormap(gray);
-figure; imagesc(shrec+sl); colorbar; title('conv grd rec'); colormap(gray);
-figure; imagesc(sum3(abs(Xgrd))); colorbar; title('conv grd l1 coef');colormap(gray);
-
-
+[Xtv,~] = cbpdntv(D,s,lambda,mu,opt);
+shrec = scnv(D,Xtv);
+figure; imagesc(shrec); colorbar; title('conv TV high rec'); colormap(gray);
+figure; imagesc(shrec+sl); colorbar; title('conv TV rec'); colormap(gray);
+figure; imagesc(sum3(abs(Xtv))); colorbar; title('conv TV Reweigh coef');colormap(gray);
 
 
 
