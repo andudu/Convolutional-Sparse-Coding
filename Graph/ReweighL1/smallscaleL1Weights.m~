@@ -1,4 +1,4 @@
-%scrit for testing 
+% small scale denoise test 
 
 %%%%%%%%%%%%%%%%%% Setting the Parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -6,13 +6,13 @@
 optl = {};
 optl.wsz = [60,60];
 optl.psz = [8,8];
-optl.neig = 300;
-optl.Lformat = 'Full';
+optl.neig = 40;
+optl.Lformat = 'Sparse';
 optl.Laplacian = 'n';
 optl.Graph.tau = 1;
 optl.Graph.Metric = 'Cosine';
 optl.Graph.GraphType = 'Window';
-optl.Graph.nsz = [10,10];
+optl.Graph.nsz = [8,8];
 optl.Graph.k = [];
 
 
@@ -22,7 +22,7 @@ stpsz = [1,1];
 load('stdnoise.mat');
 n = r_noise(1:imsz(1),1:imsz(2));
 Dversion = 'lenapatch+noise';
-Wversion = 1;
+Wversion = 0;
 %%%%%%%%%%%%%%%%%%   Generating Data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if strcmp(Dversion, 'simpleline'),
@@ -94,11 +94,13 @@ if strcmp(Dversion, 'lenapatch+noise'),
     sl = sl(50:1:imsz(1)+50-1,160:1:imsz(2)+160-1);
 end
 
+    
+
 
 %%%%%%%%%%%%%%%%%   Building the Graph Weights %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Version 1. Connect nonzero/zero elements to its nonzero/zero neighbors
-% Perfect graph for the simple line case
+% Perfect paring in this case
 if Wversion == 1
     W = sparse(optl.wsz(1)*optl.wsz(2), optl.wsz(1)*optl.wsz(2));
     for i = 1:optl.wsz(1)
@@ -136,125 +138,44 @@ if Wversion == 1
     temp = L;
     L = {}; L{1}.ind1 = ind1;
     L{1}.ind2 = ind2; L{1}.M = temp;
-    
+    L_perfect = L;    
 end
 
-% % Version 0 Choose a scheme specified by optl
-% if Wversion == 0
-%     [L,scrop] = laplacian_from_image(s,optl);
-% end
+
+% Version 0 Choose a scheme specified by optl
+
+Wversion = 0;
+if Wversion == 0
+    [L,scrop] = laplacian_from_image(s,optl);
+end
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%% The Actual Test %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Ltemp = L{i}.M;
+dt = .1;
+
+xtemp = 
+
+x = %initial condition
+y = x + dt*Ltemp*x;
+wsz = optl.wsz;
+y = reshape(y,wsz(1),wsz(2))';
+figure;
+imagesc(y);
+colorbar;
 
 
 
-% a = L{1}.M;
-% for i = 1:size(a,1)
-%     a(i,i) = 0;
-% end
-% 
-% %test1;
-% optw.imsz = imsz ;
-% optw.psz = psz;
-% optw.BackgroundImage = s;
-% optw.W = -a;
-% ind1 = [35,45]; % a curved line in lena patch
-% ind1 = [20, 20];   %a point on the simple line (long line)
-% [s1,~] = showweights(ind1,optw);
-% 
-% 
-% optw = {};
-% optw.imsz = imsz ;
-% optw.psz = psz;
-% optw.BackgroundImage = s;
-% optw.tau = optl.Graph.tau;
-% optw.Metric = optl.Graph.Metric;
-% optw.GraphType = optl.Graph.GraphType;
-% optw.nsz = optl.Graph.nsz;
-% optw.coefsz = imsz - psz + [1,1];
-% [s2,~] = showweights(ind1,optw);
-% 
-% 
-% figure;
-% subplot(1,2,1);
-% imagesc(s1);
-% hold on;
-% plot(ind1(2),ind1(1),'rx');
-% hold off;
-% title('Normalized Weights');
-% 
-% subplot(1,2,2);
-% imagesc(s2);
-% hold on;
-% plot(ind1(2),ind1(1),'rx');
-% hold off;
-% title('Original Weights');
-% 
-% 
-% 
-% ind2 = [24,22];  % a "confetti patch"
-% optw.W = -a;
-% [s1,~] = showweights(ind2,optw);
-% optw = rmfield(optw,'W');
-% [s2,~] = showweights(ind2,optw);
-% figure;
-% subplot(1,2,1);
-% imagesc(s1);
-% hold on;
-% plot(ind2(2),ind2(1),'rx');
-% hold off;
-% title('Normalized Weights');
-% 
-% subplot(1,2,2);
-% imagesc(s2);
-% hold on;
-% plot(ind2(2),ind2(1),'rx');
-% hold off;
-% title('Original Weights');
 
 
-%test3;  % full image
-optw = {};
-s = double(stdimage('lena.grey')) / 255;
-s = imresize(s,.5);
-s = s+r_noise;
-[sl,sh] = lowpass(s,6,15);
-imsz = size(sh);
-psz = [12,12];
-s = sh;
-ind1 = [43,153] - [6,6];
-ind1 = [183,56] - [6,6];
-ind1 = [222,144] - [6,6];
-ind1 = [109,181] - [6,6];
-%ind1 = [53,106]; %This lies on one of the edges
-%ind2 = [68,213]; % This looks like a confetti patch
-optw.imsz = imsz ;
-optw.psz = psz;
-optw.BackgroundImage = s;
-optw.tau = 2;
-optw.Metric = 'Cosine';
-optw.GraphType = 'Window';
-optw.nsz = [15,15];
-optw.coefsz = imsz - psz + [1,1];
 
-[s1,~] = showweights(ind1,optw);
-figure; 
-imagesc(s1);
-hold on;
-plot(ind1(2),ind1(1),'rx');
-hold off;
-title('Original Weights');
 
-% [s2,~] = showweights(ind2,optw);
-% figure; 
-% imagesc(s2);
-% hold on;
-% plot(ind2(2),ind2(1),'rx');
-% hold off;
-% title('Original Weights');
+
+
+
+
+
+
+
 
 
 
