@@ -36,7 +36,7 @@ opt.HighMemSolve = 1;
 opt.L1Weight = 1;
 
 [X,~]= cbpdngr(D,shref,lambda,mu,opt);
-[X,~] = lowpass(X,1,10);
+l
 
 square_plot(X,{});
 

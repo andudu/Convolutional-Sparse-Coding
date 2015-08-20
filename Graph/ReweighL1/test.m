@@ -20,7 +20,7 @@ load('CacheData/Dict_12x12.mat');
 %%%%%%%%%%%%%%%%%%%%%%% set up parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 mu = .05;
-lambda = 0.32;
+lambda = 0.3;
 opt = {};
 opt.Verbose = 1;
 opt.MaxMainIter = 100;
@@ -31,7 +31,7 @@ opt.HighMemSolve = 1;
 opt.L1Weight = Weight;
 
 
-[Xcn,~] = cbpdngr(D,sh,lambda,mu,opt);
+[Xcn,~] = cbpdn(D,sh,lambda,opt);
 disp('cbpdn');
 
 % opt.L1Weight = 1;
@@ -43,7 +43,6 @@ scnv = @(d,x) ifft2(sum(bsxfun(@times, fft2(d, size(x,1), size(x,2)), ...
                                fft2(x)),3), 'symmetric');
 
 shreccn = scnv(D,Xcn);
-
 sreccn = shreccn+sl;
 
 % shreccnref = scnv(D,Xcnref);

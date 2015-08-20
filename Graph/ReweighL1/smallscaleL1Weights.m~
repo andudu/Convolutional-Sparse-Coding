@@ -142,26 +142,30 @@ if Wversion == 1
 end
 
 
-% Version 0 Choose a scheme specified by optl
 
+% Version 0 Choose a scheme specified by optl
 Wversion = 0;
 if Wversion == 0
     [L,scrop] = laplacian_from_image(s,optl);
 end
 
+ind = [26,49]-[6,6];
+flatind = rec2flat(ind,imsz,psz,stpsz);
 
-Ltemp = L{i}.M;
-dt = .1;
+Ltemp = L{1}.M;
+dt = .5;
+x = zeros(size(Ltemp,1),1);
+x(flatind) = .1;%initial condition
 
-xtemp = 
-
-x = %initial condition
-y = x + dt*Ltemp*x;
+for k = 1:6
+y = x - dt*Ltemp*x;
 wsz = optl.wsz;
+x = y;
 y = reshape(y,wsz(1),wsz(2))';
 figure;
 imagesc(y);
 colorbar;
+end;
 
 
 
