@@ -5,6 +5,7 @@ tau = opt.tau;
 if nargin < 3
     x = s1d;
 end
+
 %%%%%%%%%%%%%%%%%%%%%% Generating Pairwise Distance %%%%%%%%%%%%%%%%%%%%%%%
 if strcmp(opt.Metric, 'Euclidean')
     W = sqdist(s1d,x);
@@ -14,7 +15,6 @@ end
 if strcmp(opt.Metric, 'Cosine')
     foo = cosdist(s1d,x);
     foo(foo<=0) = 0; %hard thresholding negative values
-%    W = exp(-(1./(foo+.01)-.9901)/tau);
     W = exp(-abs((1./(foo+.01)-.9901).^(1.3))/tau);
 end
 

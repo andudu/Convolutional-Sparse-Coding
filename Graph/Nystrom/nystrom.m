@@ -4,12 +4,13 @@
 %  opt. tau : kernel width for metric
 %  opt. numsample : number of samples
 %  opt. neig  : number of eigenvectors
+%  opt. Laplacian = 'n' or 'u'
 
 %  phi : (phi_1,...phi_n), coloumn eigenvectors
 %  E   : Array of eigenvalues (increasing)
 % -------------------------------------------------------------------------
 
-function [phi E] = nystrom_n(data, opt)
+function [phi E] = nystrom(data, opt)
 
 tau = opt.tau;
 num_samples = opt.numsample;
@@ -35,6 +36,12 @@ if strcmp(opt.Metric, 'Cosine')
     foo(foo<=0) = 0; %hard thresholding negative values
     B = exp(-abs((1./(foo+.01)-.9901).^(1.3))/tau);    
 end
+
+if strcmp(opt.Metric, 'Euclidean')
+    A = sqdist(sample_data',sample_data');
+    B = cosdist(other_data',sample_data'); 
+end
+
 A = single(A);
 B = single(B);
 
@@ -44,14 +51,17 @@ clear sample_data other_data;
 % Normalize A and B using row sums of W, where W = [A B; B' B'*A^-1*B].
 % Let d1 = [A B]*1, d2 = [B' B'*A^-1*B]*1, dhat = sqrt(1./[d1; d2]).
 
-B_T = B';
-d1 = sum(A, 2) + sum(B, 2);
-d2 = sum(B_T, 2) + B_T*(pinv(A)*sum(B, 2));
-dhat = sqrt(1./[d1; d2]);
-A = A .* (dhat(1:num_samples)*dhat(1:num_samples)');
-B1 = dhat(1:num_samples)*dhat(num_samples+(1:other_points))';
-B = B .* B1;
-clear d1 d2 B1 dhat;
+if opt.Laplacian == 'n'
+    B_T = B';
+    d1 = sum(A, 2) + sum(B, 2);
+    d2 = sum(B_T, 2) + B_T*(pinv(A)*sum(B, 2));
+    dhat = sqrt(1./[d1; d2]);
+    A = A .* (dhat(1:num_samples)*dhat(1:num_samples)');
+    B1 = dhat(1:num_samples)*dhat(num_samples+(1:other_points))';
+    B = B .* B1;
+    clear d1 d2 B1 dhat;
+end
+
 
 % Do orthogalization and eigendecomposition
 Asi = sqrtm(pinv(A));

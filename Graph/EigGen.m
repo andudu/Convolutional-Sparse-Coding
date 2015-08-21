@@ -1,0 +1,2 @@
+% scrip for generating eigenvectors
+

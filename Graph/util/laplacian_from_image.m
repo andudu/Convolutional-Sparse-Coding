@@ -13,9 +13,15 @@ function [L,scrop] = laplacian_from_image(im,opt)
 %           opt.Graph.GraphType: 'Full', 'Window', 'WindowKNearest',
 %                                'SoftWindow'
 %           opt.Graph.nsz
-%           opt.Graph.coefsz (set by default here)
+%           opt.Graph.coefsz (set by default here, from now on, equal to imsz)
 %           opt.Graph.k: number of k-nearest neighbors
 
+
+%pad the image first
+im = padarray(im,opt.psz,'symmetric','post');
+if ~isfield(opt,'Nystrom')
+    opt.Nystrom = 0;
+end
 
 imsz = size(im);
 wsz = opt.wsz;
@@ -44,19 +50,33 @@ for i = 1:n1
         ind2 = ind1 + wsz - [1,1];
         L{iter}.ind1 = ind1;
         L{iter}.ind2 = ind2;
-        Ltemp = winlap( im, ind1, ind2, psz,opt);
-        if strcmp(opt.Lformat, 'Full')
-            L{iter}.M = Ltemp;
+        
+        if opt.Nystrom  %skip graph generation and use nystrom to do that
+            stpsz = [1,1];
+            scrop = im(ind1(1):ind2(1)+psz(1)-1, ind1(2):ind2(2)+psz(2)-1);
+            s1d = imageblocks(scrop,psz,stpsz);
+            s1d = reshape(s1d,size(s1d,1)*size(s1d,2),size(s1d,3));
+            o.tau = o.Graph.tau; o.Metric = o.Graph.Metric;
+            o.Laplacian = opt.Laplacian; o.neig = opt.neig; 
+            o. numsample = 500; %tentative number of samples
+            [V,E] = nystrom(s1d',opt);    
+                L{iter}.E = diag(E);
+                L{iter}.phi = V;            
+        else
+            Ltemp = winlap( im, ind1, ind2, psz,opt);
+            if strcmp(opt.Lformat, 'Full')
+                L{iter}.M = Ltemp;
+            end
+            if strcmp(opt.Lformat, 'Sparse')
+                L{iter}.M = sparse(Ltemp);
+            end
+            if strcmp(opt.Lformat, 'Eig')
+                [V,E] = eigs(Ltemp,opt.neig,'sr');
+                L{iter}.E = diag(E);
+                L{iter}.phi = V;
+            end
         end
-        if strcmp(opt.Lformat, 'Sparse')
-            L{iter}.M = sparse(Ltemp);
-        end
-        if strcmp(opt.Lformat, 'Eig')
-            [V,E] = eigs(Ltemp,opt.neig,'sr');
-            L{iter}.E = diag(E);
-            L{iter}.phi = V;
-        end
-        iter = iter+1;        
+        iter = iter+1;
     end
 end
 

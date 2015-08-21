@@ -164,6 +164,7 @@ if opt.HighMemSolve,
 else
   C = [];
 end
+
 Nx = prod(xsz);
 rz = Inf;
 sz = Inf;

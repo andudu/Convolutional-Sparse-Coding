@@ -4,7 +4,7 @@ function [ L ] = winlap( im, ind1, ind2, psz,opt)
 
 stpsz = [1,1];
 scrop = im(ind1(1):ind2(1)+psz(1)-1, ind1(2):ind2(2)+psz(2)-1);
-s1d = imageblocks(scrop,psz,stpsz); %down then right for compatibility with reshape
+s1d = imageblocks(scrop,psz,stpsz); 
 s1d = reshape(s1d,size(s1d,1)*size(s1d,2),size(s1d,3));
 
 %%%%%%%%%%%% Computing Graph Laplacian %%%%%%%%%%%%%%%%%%%%%
