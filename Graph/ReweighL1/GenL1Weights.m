@@ -8,10 +8,11 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%  Load  Data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %load a saved noise
-load('CacheData/stdnoise.mat');
+%load('CacheData/stdnoise.mat');
 sref = double(stdimage('lena.grey')) / 255;
-sref = imresize(sref,.5);
+%sref = imresize(sref,.5);
 [slref,shref] = lowpass(sref,5,15);
+r_noise = .1*randn(size(sref));
 s = sref+r_noise;
 [sl,sh] = lowpass(s,5,15);
 

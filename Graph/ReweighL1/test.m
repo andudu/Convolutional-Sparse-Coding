@@ -3,10 +3,11 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%  Load  Data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %load a saved noise
-load('CacheData/stdnoise.mat');
+%load('CacheData/stdnoise.mat');
 sref = double(stdimage('lena.grey')) / 255;
-sref = imresize(sref,.5);
+%sref = imresize(sref,.5);
 [slref,shref] = lowpass(sref,5,15);
+r_noise = .04*randn(size(sref));
 s = sref+r_noise;
 [sl,sh] = lowpass(s,5,15);
 
@@ -20,7 +21,7 @@ load('CacheData/Dict_12x12.mat');
 %%%%%%%%%%%%%%%%%%%%%%% set up parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 mu = .05;
-lambda = 0.3;
+lambda = 0.2;
 opt = {};
 opt.Verbose = 1;
 opt.MaxMainIter = 100;
