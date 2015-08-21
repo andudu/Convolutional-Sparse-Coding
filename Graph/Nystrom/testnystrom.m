@@ -1,28 +1,44 @@
 %script for testing Nystrom
+%
+% %snoise = randn(256,256)*.1;
+% sref = double(stdimage('lena.grey')) / 255;
+% sref = imresize(sref,.5);
+% sref = sref(60:1:200, 60:1:200);
+% %s = sref + .1*randn(size(sref));
+% imsz = size(sref);
+% psz = [8,8];
+% stpsz = [1,1];
+% s = padarray(sref,psz-[1,1],'symmetric','post'); %padd only psz-1 elements!
+% %[sl,sh] = lowpass(s,1,15);
+% % s = sh;
 
-%snoise = randn(256,256)*.1;
-sref = double(stdimage('lena.grey')) / 255;
-s = sref; %+snoise;
-imsz = size(sref);
-psz = [12,12];
+
+% lena patch
+s = double(stdimage('lena.grey')) / 255;
+s = imresize(s,.5);
+sref = s(50:1:60+50-1,160:1:60+160-1);
+s = s + .03*randn(size(s));
+[sl,sh] = lowpass(s,7,15);
+s = sh(50:1:60+50-1,160:1:60+160-1);
+imsz = size(s);
+psz = [8,8];
 stpsz = [1,1];
-s = padarray(sref,psz,'symmetric','post');
-[sl,sh] = lowpass(s,5,15);
-
+s = padarray(s,psz-[1,1],'symmetric','post');
 
 %generate graph
 opt.tau = 1;
-opt.numsample = 500;
+opt.Laplacian = 'n';
+opt.numsample = 3000;
 opt.Metric = 'Cosine';
 opt.neig = 10;
 
 
-data = imageblocks(sh,psz,stpsz);
+data = imageblocks(s,psz,stpsz);
 data = reshape(data,size(data,1)*size(data,2),size(data,3));
 data = data';
-[phi,E] = nystrom_n(data,opt);
+[phi,E] = nystrom(data,opt);
 disp('Normalized graph generated');
-X = [];
+X1 = [];
 for i = 2:opt.neig,
     v = phi(:,i);
     v = reshape(v,imsz)';

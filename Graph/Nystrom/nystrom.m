@@ -10,7 +10,7 @@
 %  E   : Array of eigenvalues (increasing)
 % -------------------------------------------------------------------------
 
-function [phi E] = nystrom(data, opt)
+function [phi, E] = nystrom(data, opt)
 
 tau = opt.tau;
 num_samples = opt.numsample;
@@ -39,7 +39,7 @@ end
 
 if strcmp(opt.Metric, 'Euclidean')
     A = sqdist(sample_data',sample_data');
-    B = cosdist(other_data',sample_data'); 
+    B = sqdist(other_data',sample_data'); 
 end
 
 A = single(A);
