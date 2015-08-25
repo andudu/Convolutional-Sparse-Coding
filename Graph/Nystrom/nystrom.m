@@ -32,24 +32,36 @@ if strcmp(opt.Metric, 'Cosine')
     foo = cosdist(sample_data',sample_data');
     foo(foo<=0) = 0; %hard thresholding negative values
     A = exp(-abs((1./(foo+.01)-.9901).^(1.3))/tau);
+    %A = exp(-abs((1./(foo+.1)-.9091).^(1.3))/tau);  
+    %A = exp( -(1-foo)/tau);
+    A(1:size(A,1)+1:size(A,1)*size(A,2)) = 0;
+    
     foo = cosdist(other_data',sample_data');
     foo(foo<=0) = 0; %hard thresholding negative values
-    B = exp(-abs((1./(foo+.01)-.9901).^(1.3))/tau);    
+    
+    B = exp(-abs((1./(foo+.01)-.9901).^(1.3))/tau);  
+    %B = exp( -(1-foo)/tau);
+    %B = exp(-abs((1./(foo+.1)-.9091).^(1.3))/tau);     
+    clear foo;
 end
 
 if strcmp(opt.Metric, 'Euclidean')
-    A = sqdist(sample_data',sample_data');
+    A = sqdist(sample_data',sample_data');   
     B = sqdist(other_data',sample_data'); 
+    A = exp(-A/tau);
+    B = exp(-B/tau);
+    A(1:size(A,1)+1:size(A,1)*size(A,2)) = 0;     
 end
 
-A = single(A);
-B = single(B);
+%A = single(A);
+%B = single(B);
 
 clear sample_data other_data;
 
 
 % Normalize A and B using row sums of W, where W = [A B; B' B'*A^-1*B].
 % Let d1 = [A B]*1, d2 = [B' B'*A^-1*B]*1, dhat = sqrt(1./[d1; d2]).
+
 
 if opt.Laplacian == 'n'
     B_T = B';
@@ -75,7 +87,7 @@ clear B B_T;
 R = A + Asi*BBT*Asi;
 R = (R + R')/2; % Make sure R is symmetric, sometimes R can be non-symmetric because of numerical inaccuracy
 [U E] = eig(R);
-[val ind] = sort(diag(E), 'descend');
+[~, ind] = sort(diag(E), 'descend');
 U = U(:, ind); % in decreasing order
 E = E(ind, ind); % in decreasing order
 E = diag(E);
@@ -85,7 +97,7 @@ phi = bsxfun(@rdivide, W*U, sqrt(E'));
 
 phi(permed_index,:) = phi;
 phi = real(phi);
-E = 1-diag(E);
+E = 1-E;
 
 phi = phi(:,1:neig); 
 E = E(1:neig);

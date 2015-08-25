@@ -403,15 +403,18 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
     end
   end
 
-if k < 50,
-    imdisp(tiledict(PzpT(G)));
-    drawnow;
-else
-    if mod(k,5) == 0,
-       imdisp(tiledict(PzpT(G)));
-       drawnow;
-    end
-end
+% if k == 1,
+%     figure;
+% end
+% if k < 50,
+%     imdisp(tiledict(PzpT(G)));
+%     drawnow;
+% else
+%     if mod(k,5) == 0,
+%        imdisp(tiledict(PzpT(G)));
+%        drawnow;
+%     end
+% end
 
 k = k + 1;
 

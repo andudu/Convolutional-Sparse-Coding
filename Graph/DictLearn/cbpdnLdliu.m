@@ -10,12 +10,13 @@ function [D, Y, optinf] = cbpdnLdliu(D0, S, L, mu,lambda, opt)
 %         main linear systems (see wohlberg-2014-efficient).
 %
 % Usage:
-%       [D, X, optinf] = cbpdndliu(D0, S, lambda, opt)
+%       [D, X, optinf] = cbpdndLliu(D0, S, L,lambda,mu, opt)
 %
 % Input:
 %       D0          Initial dictionary
 %       S           Input images
 %       lambda      Regularization parameter
+%       mu          Regularization parameter for Laplacian
 %       L           The Graph Laplacian Cell structure
 %       opt         Options/algorithm parameters structure (see below)
 %
@@ -115,13 +116,24 @@ else
 end
 
 % Set up status display for verbose operation
-hstr = ['Itn   Fnc       DFid      l1        Cnstr     '...
-        'r(X)      s(X)      r(D)      s(D) '];
+hstr = ['Itn   Fnc       DFid       l1       JLp     '...
+        '  r(X)      s(X)      r(D)      s(D) '];
 sfms = '%4d %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e %9.2e';
 nsep = 84;
+
+if lf == 'e'
+   hstr = [hstr '     r(z)      s(z)  '];
+   sfms = [sfms ' %9.2e %9.2e'];
+   nsep = nsep + 10;
+end
+
 if opt.AutoRho,
   hstr = [hstr '     rho  '];
   sfms = [sfms ' %9.2e'];
+  nsep = nsep + 10;
+end
+if lf == 'e' && opt.AutoRhoBar
+  hstr = [hstr '     rhob  '];
   nsep = nsep + 10;
 end
 if opt.AutoSigma,
@@ -212,6 +224,14 @@ eduax = 0;
 eprid = 0;
 eduad = 0;
 
+if lf == 'e'
+    rz = Inf;
+    sz = Inf;
+    epriz = 0;
+    eduaz = 0;
+end
+
+
 % Initialise main working variables
 X = [];
 if isempty(opt.Y0),
@@ -251,12 +271,14 @@ GSf = bsxfun(@times, conj(Gf), Sf);
 
 if lf == 'm'
     o = cell(1,length(L)); %cell array of options for mini lasso
-    for i = 1:length(L)
-        o{i}.MaxMainIter = 10;
-        o{i}.verbose = 0;       
-        o{i}.Y = [];
-        o{i}.eta = 1.2;
-        o{i}.tol = opt.RelStopTol/10;
+    for i = 1:size(L,1)
+        for j = 1:size(L,2)
+            o{i,j}.MaxMainIter = 10;
+            o{i,j}.verbose = 0;
+            o{i,j}.Y = [];
+            o{i,j}.eta = 1.2;
+            o{i,j}.tol = opt.RelStopTol/10;
+        end
     end
 end
 
@@ -276,25 +298,31 @@ if lf == 'e'
     else
         V = opt.V0;
     end    
-    rho_bar = rho;
-    
+    rho_bar = rho;   
 end
 
 
 
 % Main loop
-k = 1;
-while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
+k = 1; flag = 1;
+while k <= opt.MaxMainIter & flag,
 
   % Solve X subproblem. It would be simpler and more efficient (since the
   % DFT is already available) to solve for X using the main dictionary
   % variable D as the dictionary, but this appears to be unstable. Instead,
   % use the projected dictionary variable G
   
-  if lf == 'm'  % Given Sparse Matrices and use Lasso
+  if lf == 'm',
+    flag = (rx > eprix|sx > eduax|rd > eprid|sd >eduad);
+  else
+    flag = (rx > eprix|sx > eduax|rd > eprid|sd >eduad |rz > epriz | sz > eduaz ) ; 
+  end
+  
+  
+  if lf == 'm'  % Given Sparse Matrices and use Lasso. Remember to add the CG option here. 
     Xf = solvedbi_sm(Gf, rho, GSf + rho*fft2(Y - U));
   else %Given Eigenvectors and use Splitting
-    Xf = solvedbi_sm(Gf, rho+rho_bar, GSf + (rho+rho_bar)*fft2(rho/(rho+rho_bar)*(Y - U)+ sigma/(rho+rho_bar)*(Z-V)), C);  
+    Xf = solvedbi_sm(Gf, rho+rho_bar, GSf + (rho+rho_bar)*fft2(rho/(rho+rho_bar)*(Y - U)+ rho_bar/(rho+rho_bar)*(Z-V)));  
   end
   
   X = ifft2(Xf, 'symmetric');
@@ -308,7 +336,7 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
   end
 
   % Solve Y subproblem
-  Y = shrink(Xr + U, (lambda/rho)*opt.L1Weight);
+  Y = shrink(Xr + U, (lambda/rho)*opt.L1Weight); 
   if opt.NoBndryCross,
     Y((end-size(D,1)+2):end,:,:,:) = 0;
     Y(:,(end-size(D,1)+2):end,:,:) = 0;
@@ -319,46 +347,54 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
   % Solve Z subproblem. Either via EigDecomp of MiniLasso
   if lf == 'e'  %reshapes!! Careful with the direction
       a = Xr+V; JL_par = 0; JL_perp = 0; Z = zeros(size(a));
-      for i = 1:length(L)
-          E = L{i}.E;
-          phi = L{i}.phi;
-          ai = reshape(permute(a(:,:,:,i),[2,1,3]),size(a,1)*size(a,2) ...
-              ,size(a,3));
-          %solve via eigenvectors
-          ai_c = phi'*ai;
-          ai_par = phi*(ai_c);
-          ai_perp = ai - ai_par;
-          temp_c = bsxfun(@times,rho_bar./(mu*E + rho_bar),ai_c) ;
-          temp_par = phi*temp_c;
-          temp_perp = ai_perp*rho_bar/(mu+rho_bar);
-          temp = temp_par + temp_perp;
-          temp = reshape(temp,size(a,1),size(a,2),size(a,3));
-          Z(:,:,:,i) = permute(temp,[2,1,3]);
-          if opt.Verbose,
-             JL_par = JL_par + sum(vec(temp_c.*bsxfun(@times,temp_c,E))); 
-             JL_perp = JL_perp + sum(vec(temp_perp.^2));
-          end          
+      for i = 1:size(L,1) %across images
+          for j = 1:size(L,2) %across image sindows
+              E = L{i,j}.E;
+              phi = L{i,j}.phi;
+              I1 = L{i,j}.ind1(1):L{i,j}.ind2(1);
+              I2 = L{i,j}.ind1(2):L{i,j}.ind2(2);
+              ai = reshape(permute(a(I1,I2,:,i),[2,1,3]),size(a,1)*size(a,2) ...
+                  ,size(a,3));
+              %solve via eigenvectors
+              ai_c = phi'*ai;
+              ai_par = phi*(ai_c);
+              ai_perp = ai - ai_par;
+              temp_c = bsxfun(@times,rho_bar./(mu*E + rho_bar),ai_c) ;
+              temp_par = phi*temp_c;
+              temp_perp = ai_perp*rho_bar/(mu+rho_bar);
+              temp = temp_par + temp_perp;
+              temp = reshape(temp,size(a,1),size(a,2),size(a,3));
+              Z(I1,I2,:,i) = permute(temp,[2,1,3]);
+              if opt.Verbose,
+                  JL_par = JL_par + sum(vec(temp_c.*bsxfun(@times,temp_c,E)));
+                  JL_perp = JL_perp + sum(vec(temp_perp.^2));
+              end
+          end
       end
       if opt.Verbose,
-        JLp = JL_par + JL_perp;
+          JLp = JL_par + JL_perp;
       end
-      clear a temp E phi temp temp_par temp_perp;
+      clear a temp E phi temp temp_par temp_perp temp_c;
   end
   
   if lf == 'm'  %mini laso
-      for i = 1:length(L)
-          Ltemp = L{i};
-          a = Xr+U;
-          [temp,o{i}.el] = lasso_fista(Ltemp.M,reshape(permute(a(:,:,:,i),[2,1,3]),size(a,1)*size(a,2) ...
-              ,size(a,3)),lambda,mu,rho,o{i}); % warm starting
-          if opt.Verbose,
-              JLp = 0;
-              JLp = trace(temp'*Ltemp.M * temp) +JLp;
+      JLp = 0;
+      for i = 1:size(L,1)
+          for j = 1.size(L,2)
+              Ltemp = L{i,j};
+              a = Xr+U;
+              I1 = L{i,j}.ind1(1):L{i,j}.ind2(1);
+              I2 = L{i,j}.ind1(2):L{i,j}.ind2(2);
+              [temp,o{i,j}.el] = lasso_fista(Ltemp.M,reshape(permute(a(I1,I2,:,i),[2,1,3]),size(a,1)*size(a,2) ...
+                  ,size(a,3)),lambda,mu,rho,o{i,j}); % warm starting
+              if opt.Verbose,
+                  JLp = trace(temp'*Ltemp.M * temp) +JLp;
+              end
+              o{i,j}.Y = temp;
+              temp = reshape(temp,size(a,1),size(a,2),size(a,3));
+              Y(I1,I2,:,i) = permute(temp,[2,1,3]);
+              clear a temp;
           end
-          o{i}.Y = temp;
-          temp = reshape(temp,size(a,1),size(a,2),size(a,3));
-          Y(I1,I2,:) = permute(temp,[2,1,3]);
-          clear a;
       end
   end
   
@@ -386,13 +422,35 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
     eprix = sqrt(Nx)*opt.AbsStopTol/max(nX,nY)+opt.RelStopTol;
     eduax = sqrt(Nx)*opt.AbsStopTol/(rho*nU)+opt.RelStopTol;
   end
-  clear X;
 
+
+  if lf == 'e' %calculate additional residual if eig option
+      nZ = norm(Z(:));  nV = norm(V(:));
+      if opt.StdResiduals,
+          % See pp. 19-20 of boyd-2010-distributed
+          rz = norm(vec(X - Z));
+          sz = norm(vec(rho_bar*(Zprv - Z)));
+          epriz = sqrt(Nx)*opt.AbsStopTol+max(nX,nZ)*opt.RelStopTol;
+          eduaz = sqrt(Nx)*opt.AbsStopTol+rho_bar*nV*opt.RelStopTol;
+      else
+          % See wohlberg-2015-adaptive
+          rz = norm(vec(X - Z))/max(nX,nZ);
+          sz = norm(vec(Zprv - Z))/nV;
+          epriz = sqrt(Nx)*opt.AbsStopTol/max(nX,nZ)+opt.RelStopTol;
+          eduaz = sqrt(Nx)*opt.AbsStopTol/(rho_bar*nV)+opt.RelStopTol;
+      end
+  end
+
+  clear X; 
+  
   % Compute l1 norm of Y
   Jl1 = sum(abs(vec(opt.L1Weight .* Y)));
 
   % Update record of previous step Y
   Yprv = Y;
+  if lf == 'e'
+      Zprv = Z;
+  end
 
 
   % Solve D subproblem. Similarly, it would be simpler and more efficient to
@@ -444,9 +502,7 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
   if opt.CGTolAuto && (rd/opt.CGTolFactor) < cgt,
     cgt = rd/opt.CGTolFactor;
   end
-
-  % Compute measure of D constraint violation
-  Jcn = norm(vec(Pcn(D) - D));
+  
   clear D;
 
   % Update record of previous step G
@@ -454,25 +510,36 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
 
 
   % Compute data fidelity term in Fourier domain (note normalisation)
-  Jdf = sum(vec(abs(sum(bsxfun(@times,Gf,Yf),3)-Sf).^2))/(2*xsz(1)*xsz(2));
-  clear Yf;
-  Jfn = Jdf + lambda*Jl1;
-
-
-  % Record and display iteration details
-  tk = toc(tstart);
-  optinf.itstat = [optinf.itstat;...
-       [k Jfn Jdf Jl1 rx sx rd sd eprix eduax eprid eduad rho sigma tk]];
   if opt.Verbose,
-    dvc = [k, Jfn, Jdf, Jl1, Jcn, rx, sx, rd, sd];
-    if opt.AutoRho,
-      dvc = [dvc rho];
-    end
-    if opt.AutoSigma,
-      dvc = [dvc sigma];
-    end
-    disp(sprintf(sfms, dvc));
+      Jdf = sum(vec(abs(sum(bsxfun(@times,Gf,Yf),3)-Sf).^2))/(2*xsz(1)*xsz(2));
+      clear Yf;
+      Jfn = Jdf + lambda*Jl1 + mu*JLp;
+      
+      
+      % Record and display iteration details
+      tk = toc(tstart);
+      optinf.itstat = [optinf.itstat;...
+          [k Jfn Jdf Jl1 rx sx rd sd eprix eduax eprid eduad rho sigma tk]];
   end
+  
+   if opt.Verbose,
+       dvc = [k, Jfn, Jdf, Jl1, JLp, rx, sx, rd, sd];
+       if lf == 'e'
+           dvc = [dvc, rz,sz];
+       end
+       if opt.AutoRho,
+           dvc = [dvc rho];
+       end
+       if lf == 'e'
+           if opt.AutoRhoBar
+               dvc = [dvc rho_bar];
+           end
+       end
+       if opt.AutoSigma,
+           dvc = [dvc sigma];
+       end
+       disp(sprintf(sfms, dvc));
+   end
 
   % See wohlberg-2015-adaptive and pp. 20-21 of boyd-2010-distributed
   if opt.AutoRho,
@@ -491,6 +558,26 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
       U = U/rsf;
     end
   end
+
+  if(lf == 'e')
+      if opt.AutoRhoBar,
+          if k ~= 1 && mod(k, opt.AutoRhoBarPeriod) == 0,
+              if opt.AutoRhoBarScaling,
+                  rhomlt_bar = sqrt(rz/sz);
+                  if rhomlt_bar < 1, rhomlt_bar = 1/rhomlt_bar; end
+                  if rhomlt_bar > opt.RhoBarScaling, rhomlt_bar = opt.RhoBarScaling; end
+              else
+                  rhomlt_bar = opt.RhoBarScaling;
+              end
+              rsf = 1;
+              if rz > opt.RhoBarRsdlRatio*sz, rsf = rhomlt_bar; end
+              if sz > opt.RhoBarRsdlRatio*rz, rsf = 1/rhomlt_bar; end
+              rho_bar = rsf*rho_bar;
+              V = V/rsf;
+          end
+      end
+  end
+  
   if opt.AutoSigma,
     if k ~= 1 && mod(k, opt.AutoSigmaPeriod) == 0,
       if opt.AutoSigmaScaling,
@@ -508,15 +595,20 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
     end
   end
 
-if k < 50,
-    imdisp(tiledict(PzpT(G)));
-    drawnow;
-else
-    if mod(k,5) == 0,
-       imdisp(tiledict(PzpT(G)));
-       drawnow;
-    end
-end
+
+% %show learned dictionary   
+% if k == 1,
+%     figure;
+% end
+% if k < 50,
+%     imdisp(tiledict(PzpT(G)));
+%     drawnow;
+% else
+%     if mod(k,5) == 0,
+%        imdisp(tiledict(PzpT(G)));
+%        drawnow;
+%     end
+% end
 
 k = k + 1;
 
@@ -609,6 +701,13 @@ function opt = defaultopts(opt)
   if ~isfield(opt,'U0'),
     opt.U0 = [];
   end
+  if ~isfield(opt,'Z0'),
+    opt.Z0 = [];
+  end
+  if ~isfield(opt,'V0'),
+    opt.V0 = [];
+  end  
+  
   if ~isfield(opt,'G0'),
     opt.G0 = [];
   end
@@ -618,6 +717,10 @@ function opt = defaultopts(opt)
   if ~isfield(opt,'rho'),
     opt.rho = [];
   end
+  if ~isfield(opt,'rho_bar'),
+    opt.rho = [];
+  end  
+  
   if ~isfield(opt,'AutoRho'),
     opt.AutoRho = 0;
   end
@@ -633,6 +736,24 @@ function opt = defaultopts(opt)
   if ~isfield(opt,'AutoRhoScaling'),
     opt.AutoRhoScaling = 0;
   end
+  if ~isfield(opt,'Lformat'),
+      opt.Lformat = [];
+  end
+  if ~isfield(opt,'AutoRhoBar'),
+    opt.AutoRhoBar = 0;
+  end
+  if ~isfield(opt,'AutoRhoBarPeriod'),
+    opt.AutoRhoBarPeriod = 10;
+  end
+  if ~isfield(opt,'RhoBarRsdlRatio'),
+    opt.RhoBarRsdlRatio = 10;
+  end
+  if ~isfield(opt,'RhoBarScaling'),
+    opt.RhoBarScaling = 2;
+  end
+  if ~isfield(opt,'AutoRhoBarScaling'),
+    opt.AutoRhoBarScaling = 0;
+  end  
   if ~isfield(opt,'sigma'),
     opt.sigma = [];
   end

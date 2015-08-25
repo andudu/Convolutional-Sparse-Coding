@@ -15,36 +15,40 @@
 
 % lena patch
 s = double(stdimage('lena.grey')) / 255;
-s = imresize(s,.5);
-sref = s(50:1:60+50-1,160:1:60+160-1);
-s = s + .03*randn(size(s));
+%s = imresize(s,.5);
+% sref = s(50:1:60+50-1,160:1:60+160-1);
+% s = s + .03*randn(size(s));
 [sl,sh] = lowpass(s,7,15);
-s = sh(50:1:60+50-1,160:1:60+160-1);
+% s = sh(50:1:60+50-1,160:1:60+160-1);
+
+
 imsz = size(s);
-psz = [8,8];
+psz = [12,12];
 stpsz = [1,1];
-s = padarray(s,psz-[1,1],'symmetric','post');
+sh = padarray(sh,psz-[1,1],'symmetric','post');
 
 %generate graph
-opt.tau = 1;
+opt.tau = .8;
 opt.Laplacian = 'n';
-opt.numsample = 3000;
-opt.Metric = 'Cosine';
-opt.neig = 10;
+opt.numsample = 500;
+opt.Metric = 'Euclidean';
+opt.neig = 15;
 
 
-data = imageblocks(s,psz,stpsz);
+data = imageblocks(sh,psz,stpsz);
 data = reshape(data,size(data,1)*size(data,2),size(data,3));
 data = data';
 [phi,E] = nystrom(data,opt);
 disp('Normalized graph generated');
 X1 = [];
-for i = 2:opt.neig,
+for i = 1:opt.neig,
     v = phi(:,i);
     v = reshape(v,imsz)';
-    X1(:,:,i-1) = v;
+    X1(:,:,i) = v;
 end
 square_plot(X1,{});
+figure;
+plot(E);
 
 % [phi,E] = nystrom_u(data,opt);
 % disp('Unnormalized graph generated');

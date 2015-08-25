@@ -1,8 +1,0 @@
-
-
-
-foo = 0:.01:1;
-tau = .5:.5:3;
-for i = 1:length(tau)
-    W = exp(-(1./(foo+.01)-.9901)/tau(i));
-end

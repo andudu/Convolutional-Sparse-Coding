@@ -9,12 +9,12 @@
 optl = {};
 optl.wsz = [60,60];
 optl.psz = [8,8];
-optl.neig = 300;
-optl.Lformat = 'Sparse';
+optl.neig = 30;
+optl.Lformat = 'Full';
 optl.Laplacian = 'n';
-optl.Graph.tau = 2;
+optl.Graph.tau = 1;
 optl.Graph.Metric = 'Cosine';
-optl.Graph.GraphType = 'Window';
+optl.Graph.GraphType = 'Full';
 optl.Graph.nsz = [8,8];
 optl.Graph.k = [];
 
@@ -103,7 +103,7 @@ end
 
 % Version 0 Choose a scheme specified by optl
 
-optl.Graph.nsz = [3,3];
+optl.Graph.nsz = [8,8];
 
 if Wversion == 0
     [L1,scrop] = laplacian_from_image(s,optl);
@@ -113,64 +113,49 @@ if Wversion == 0
     end
 end
 
-optl.Graph.nsz = [5,5];
-
-% Version 0 Choose a scheme specified by optl
-if Wversion == 0
-    [L2,scrop] = laplacian_from_image(s,optl);
-    if(eigop)
-        [phi2,E2] = eigs(L2{1}.M,optl.neig,'sr');
-        E2 = diag(E2);
-    end
-end
-
-optl.Graph.nsz = [9,9];
-
-% Version 0 Choose a scheme specified by optl
-if Wversion == 0
-    [L3,scrop] = laplacian_from_image(s,optl);
-    if(eigop)
-        [phi3,E3] = eigs(L3{1}.M,optl.neig,'sr');
-        E3 = diag(E3);
-    end
-end
 
 
 %%%%%%%%%%%%%%%%%%%%% Visualizing and Testing Laplacian%%%%%%%%%%%%%%%%%%%%
 % 
 % Plot 3 eigenvectors
-x = 1:1:optl.neig;
-plot(x,E1,x,E2,x,E3);
-legend('nsz = 3', 'nsz = 5' , 'nsz = 9');
-saveas(gcf,'nsz-eigvalue','png');
+
 
 %visualizing the eigenvector, eigenvalues
 Xeig1 = [];
-for i = 15:29
+for i = 2:10
     foo = reshape(phi1(:,i),optl.wsz(1),optl.wsz(2));
-    Xeig1(:,:,i-14) = foo';
+    Xeig1(:,:,i-1) = foo';
 end
 o.colorbar = 0;
 square_plot(Xeig1,o);
-saveas(gcf,'nsz3-eigvector','png');
+figure; 
+plot(E1);
 
-Xeig2 = [];
-for i = 15:29
-    foo = reshape(phi2(:,i),optl.wsz(1),optl.wsz(2));
-    Xeig2(:,:,i-14) = foo';
-end
-o.colorbar = 0;
-square_plot(Xeig2,o);
-saveas(gcf,'nsz5-eigvector','png');
 
-Xeig3 = [];
-for i = 15:29
-    foo = reshape(phi3(:,i),optl.wsz(1),optl.wsz(2));
-    Xeig3(:,:,i-14) = foo';
+%generate graph
+opt = {};
+opt.tau = 1;
+opt.Laplacian = 'n';
+opt.numsample = 500;
+opt.Metric = 'Euclidean';
+opt.neig = 10;
+
+
+data = imageblocks(s,psz,stpsz);
+data = reshape(data,size(data,1)*size(data,2),size(data,3));
+data = data';
+[phi,E] = nystrom(data,opt);
+disp('Normalized graph generated');
+X1 = [];
+for i = 2:opt.neig,
+    v = phi(:,i);
+    v = reshape(v,[60,60])';
+    X1(:,:,i-1) = v;
 end
-o.colorbar = 0;
-square_plot(Xeig3,o);
-saveas(gcf,'nsz9-eigvector','png');
+square_plot(X1,{});
+figure; 
+plot(E);
+
 
 
 % a = L{1}.M;
