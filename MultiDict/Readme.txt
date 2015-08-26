@@ -1,0 +1,13 @@
+Experiments for learning dictionaries from different resolutions: 
+
+varsplit_multilearn: learn same dictionary on a two-layered image pyramid constructed by gaussian blurring 	and downsampling.
+ 
+joint_multilearn: same as varsplit_multilearn except an additional layer solely for the top layer was added.
+
+samecoeff_multilearn: Allowing dictionaries to be different, images the same size, but forcing sparse 		coefficients to be the same. 
+
+
+Results: Lead to the convolutional formulation of superresolution problem. 
+
+
+

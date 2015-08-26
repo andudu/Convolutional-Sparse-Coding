@@ -1,0 +1,19 @@
+Learn Dictionaries without lowass filter using addtional regularizers:
+
+|\nabla x|^2
+
+|\nabla D|^2
+
+|\nabla D*x|^2 
+
+
+Results: 
+
+It works in the sense that the "high frequency" patches look similiar to regular cbpdn dictionaries. Discontinued due to Erik's work. 
+
+Seems that larger patches, taking bigger stepsizes, and adding gradient penalties, or simply adding a fixed gaussian dictionary atom yields a high-low separation. 
+
+
+Add: 
+
+solvemdbd_cg, ism is the extension of solvemibd to incorporate a diagonal term in the solver. Useful for any term in the form of |K* x| or |K*D|. 

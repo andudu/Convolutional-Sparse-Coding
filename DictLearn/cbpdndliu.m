@@ -403,16 +403,29 @@ while k <= opt.MaxMainIter & (rx > eprix|sx > eduax|rd > eprid|sd >eduad),
     end
   end
 
+% % play movie per iteration
 % if k == 1,
-%     figure;
+%     o1.newfig = 1;
+%     o2.newfig = 1;
+% else
+%     o1.newfig = 0;
+%     o2.newfig = 0;
 % end
 % if k < 50,
-%     imdisp(tiledict(PzpT(G)));
+%     o1.grey = 1;
+%     o1.fighand = square_plot((PzpT(G)),o1);
+%     drawnow;
+%     o2.sparse = 1;
+%     o2.fighand = square_plot((Y),o2);
 %     drawnow;
 % else
 %     if mod(k,5) == 0,
-%        imdisp(tiledict(PzpT(G)));
-%        drawnow;
+%         o1.grey = 1;
+%         o1.fighand = square_plot((PzpT(G)),o1);
+%         drawnow;
+%         o2.sparse = 1;
+%         o2.fighand = square_plot((Y),o2);
+%         drawnow;
 %     end
 % end
 

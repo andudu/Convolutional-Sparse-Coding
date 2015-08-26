@@ -1,0 +1,11 @@
+
+
+load([sporco_path '/Data/ConvDict.mat']);
+dmap = containers.Map(ConvDict.Label, ConvDict.Dict);
+D1 = dmap('12x12x36');
+
+D2 = D1 + .01*randn(size(D1));
+D
+
+
+[ snr_rec, psnr_rec ] = inptest( Din, lambda, S, perc_noise, maxiter )
