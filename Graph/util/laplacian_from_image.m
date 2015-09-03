@@ -18,7 +18,7 @@ function [L,scrop] = laplacian_from_image(im,opt)
 
 
 %pad the image first
-im = padarray(im,opt.psz,'symmetric','post');
+im = padarray(im,opt.psz-[1,1],'symmetric','post');
 if ~isfield(opt,'Nystrom')
     opt.Nystrom = 0;
 end

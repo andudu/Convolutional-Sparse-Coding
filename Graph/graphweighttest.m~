@@ -10,7 +10,7 @@ optl.neig = 300;
 optl.Lformat = 'Full';
 optl.Graph.Laplacian = 'u';
 optl.Graph.tau = 1;
-optl.Graph.Metric = 'Euclidean';
+optl.Graph.Metric = 'Cosine';
 optl.Graph.GraphType = 'Window';
 optl.Graph.nsz = [10,10];
 optl.Graph.k = [];
@@ -21,7 +21,7 @@ psz = optl.psz;
 stpsz = [1,1];
 load('stdnoise.mat');
 n = r_noise(1:imsz(1),1:imsz(2));
-Dversion = 'lenapatch';
+Dversion = 'lenapatch+noise';
 %%%%%%%%%%%%%%%%%%   Generating Data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if strcmp(Dversion, 'simpleline'),
@@ -120,7 +120,7 @@ optw.psz = psz;
 optw.BackgroundImage = s;
 optw.W = -a;
 %ind1 = [35,45]; % a curved line in lena patch
-ind1 = [36, 17];   %a point on the simple line (long line)
+ind1 = [24, 31];   %a point on the simple line (long line)
 [s1,~] = showweights(ind1,optw);
 d = sum(abs(vec(s1)));
 
@@ -130,18 +130,10 @@ imagesc(s1);
 hold on;
 plot(ind1(2),ind1(1),'rx');
 hold off;
-title(['degree = ',num2str(d)]);
+title(['deg
 
-
-dd = sum(-a,1);
-dd = reshape(dd,optl.wsz(1),optl.wsz(2))';
-figure; 
-imagesc(dd);
-
-
-
-
-
+ 
+% 
 % ind2 = [24,22];  % a "confetti patch"
 % optw.W = -a;
 % [s1,~] = showweights(ind2,optw);

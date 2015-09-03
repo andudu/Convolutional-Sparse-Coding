@@ -600,31 +600,31 @@ while k <= opt.MaxMainIter & flag,
   end
 
 
-% play movie per iteration
-if k == 1,
-    o1.newfig = 1;
-    o2.newfig = 1;
-else
-    o1.newfig = 0;
-    o2.newfig = 0;
-end
-if k < 50,
-    o1.grey = 1;
-    o1.fighand = square_plot((PzpT(G)),o1);
-    drawnow;
-    o2.sparse = 1;
-    o2.fighand = square_plot((Y),o2);
-    drawnow;
-else
-    if mod(k,5) == 0,
-        o1.grey = 1;
-        o1.fighand = square_plot((PzpT(G)),o1);
-        drawnow;
-        o2.sparse = 1;
-        o2.fighand = square_plot((Y),o2);
-        drawnow;
-    end
-end
+% % play movie per iteration
+% if k == 1,
+%     o1.newfig = 1;
+%     o2.newfig = 1;
+% else
+%     o1.newfig = 0;
+%     o2.newfig = 0;
+% end
+% if k < 50,
+%     o1.grey = 1;
+%     o1.fighand = square_plot((PzpT(G)),o1);
+%     drawnow;
+%     o2.sparse = 1;
+%     o2.fighand = square_plot((Y),o2);
+%     drawnow;
+% else
+%     if mod(k,5) == 0,
+%         o1.grey = 1;
+%         o1.fighand = square_plot((PzpT(G)),o1);
+%         drawnow;
+%         o2.sparse = 1;
+%         o2.fighand = square_plot((Y),o2);
+%         drawnow;
+%     end
+% end
 k = k + 1;
 
 end

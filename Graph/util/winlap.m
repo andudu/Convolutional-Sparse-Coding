@@ -11,12 +11,21 @@ if ~isfield(opt, 'SaveMem') %saving memory option
     opt.SaveMem = 0;
 end
 
+if ~isfield(opt.Graph,'WeightMatrix')
+   opt.Graph.WeightMatrix = 0; 
+end
+
 
 %%%%%%%%%%%% Computing Graph Laplacian %%%%%%%%%%%%%%%%%%%%%
 
 if ~opt.SaveMem
     
     A = graphgen(s1d, opt.Graph);
+    
+    if opt.Graph.WeightMatrix
+        L = A;
+        return;
+    end
     
     if opt.Graph.Laplacian == 'n',
         L = nlap(A);
@@ -28,7 +37,6 @@ if ~opt.SaveMem
 else
     L = savememlapgen(s1d,opt.Graph);
 end
-
 
 
 

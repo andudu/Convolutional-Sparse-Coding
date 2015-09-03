@@ -2,11 +2,11 @@
 function [s1,s2] = showweights(rec_ind, opt)
 
 %load info
-imsz = opt.imsz;
 psz = opt.psz;
 stpsz = [1,1];
-coefsz = imsz - psz + [1,1];
+coefsz = opt.coefsz;
 s1 = zeros(coefsz);
+imsz = coefsz+psz-[1,1];
 flat_ind = rec2flat(rec_ind,imsz,psz,stpsz);
 
 if isfield(opt,'W'), %showimage from given laplacian

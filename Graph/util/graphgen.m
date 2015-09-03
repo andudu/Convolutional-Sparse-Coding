@@ -9,26 +9,24 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%% Generating Pairwise Distance %%%%%%%%%%%%%%%%%%%%%%%
-if ~opt.SaveMem
-    if strcmp(opt.Metric, 'Euclidean')
-        W = sqdist(s1d,x);
-        W = exp(-W/(2*tau));
-    end
-    
-    if strcmp(opt.Metric, 'Cosine')
-        foo = cosdist(s1d,x);
-        foo(foo<=0) = 0; %hard thresholding negative values
-        W = exp(-abs((1./(foo+.01)-.9901).^(1.3))/tau);
-    end
-    
-    if isfield(opt,'Threshold')
-        if ~isempty(opt.Threshold)
-            W(W<opt.Threshold) = 0;
-        end
-    end
-else
-    W = [];
+
+if strcmp(opt.Metric, 'Euclidean')
+    W = sqdist(s1d,x);
+    W = exp(-W/(2*tau));
 end
+
+if strcmp(opt.Metric, 'Cosine')
+    foo = cosdist(s1d,x);
+    foo(foo<=0) = 0; %hard thresholding negative values
+    W = exp(-abs((1./(foo+.01)-.9901).^(1.3))/tau);
+end
+
+if isfield(opt,'Threshold')
+    if ~isempty(opt.Threshold)
+        W(W<opt.Threshold) = 0;
+    end
+end
+
 
 %%%%%%%%%%%%%%%%%%%%%% Generate Graph Weights   %%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -38,14 +36,13 @@ end
     end
     
     if strcmp(opt.GraphType,'KNearest')
-        if ~opt.SaveMem
-            k = opt.k;
-            for iter = 1:size(W,1)
-                [v,is] = sort(W(iter,:),'descend');
-                W(iter,:) = 0;
-                W(iter,is(1:k)) = v(1:k);
-            end
+        k = opt.k;
+        for iter = 1:size(W,1)
+            [v,is] = sort(W(iter,:),'descend');
+            W(iter,:) = 0;
+            W(iter,is(1:k)) = v(1:k);
         end
+        
     end
     
     
@@ -135,15 +132,6 @@ end
         return;
     end
     
-
-
-%%%%%%%%%%%%%%%%%%%%%% Generate Large Graph Weights   %%%%%%%%%%%%%%%%%%%%%
-
-
-
-if nnz(W)/numel(W) < .2 % 20% sparse
-    W = sparse(W);
-end
 
 
 
