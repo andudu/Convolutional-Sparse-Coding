@@ -4,7 +4,7 @@
 load('Coef2.mat');
 
 % full matrix
-load(['/nh/u/mathluo/Convolutional-Sparse-Coding/Graph/CacheData/Lena_WindowKnearest_varn/Mat/CosineM1.mat']);
+load(['/nh/u/mathluo/Convolutional-Sparse-Coding/Graph/CacheData/Lena_WindowKnearest_vark/Mat/CosinenM1.mat']);
 ltemp = L;
 L1 = {};
 L1{1,1}.M= ltemp{1}.M;
@@ -12,7 +12,7 @@ L1{1,1}.ind1 = [1,1];
 L1{1,1}.ind2 = [256,256];
 
 
-load(['/nh/u/mathluo/Convolutional-Sparse-Coding/Graph/CacheData/Lena_WindowKnearest_varn/Mat/CosineM4.mat']);
+load(['/nh/u/mathluo/Convolutional-Sparse-Coding/Graph/CacheData/Lena_WindowKnearest_vark/Mat/CosineM4.mat']);
 ltemp = L;
 L2 = {};
 L2{1,1}.M= ltemp{1}.M;

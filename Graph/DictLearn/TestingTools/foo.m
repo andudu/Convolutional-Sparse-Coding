@@ -1,7 +1,6 @@
 
-
 load('CacheData/Dict_12x12.mat');
-
+D1 = D;
 D2 = D + .01*randn(size(D));
 Din = {D1,D2};
 lambda = .02; 
