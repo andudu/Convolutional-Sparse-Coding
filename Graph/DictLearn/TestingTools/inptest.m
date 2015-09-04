@@ -24,8 +24,6 @@ for i = 1:size(ind,2)
     Sh(ind(1,i),ind(2,i)) = 0;
 end
 
-
-
 opt.Verbose = 0;
 opt.MaxMainIter = maxiter;
 opt.rho = 100*lambda + 1;
@@ -37,6 +35,11 @@ opt.L1Weight = 1;
 snr_rec = [];
 psnr_rec = [];
 
+
+scnv = @(d,x) ifft2(sum(bsxfun(@times, fft2(d, size(x,1), size(x,2)), ...
+                               fft2(x)),3), 'symmetric');
+
+
 for i = 1:numel(Din)
     D = Din{i};
     delta = zeros(size(D,1),size(D,2));
@@ -45,13 +48,13 @@ for i = 1:numel(Din)
     numdict = size(D,3);
     opt = rmfield(opt,'L1Weight');
     opt.L1Weight = ones(size(S,1),size(S,2),numdict);
-    opt.L1Weight(:,:,numdict) = 10*ones(size(S,1),size(S,2));
+    opt.L1Weight(:,:,numdict) = 5*ones(size(S,1),size(S,2));
     for k = 1:size(ind,2)
         opt.L1Weight(ind(1,k),ind(2,k),numdict) = 0;
     end
     
     [X,~] = cbpdn(D,Sh,lambda,opt);
-    Sh_rec = convsum(D,X,1:1:numdict-1);
+    Sh_rec = scnv(D(:,:,1:1:numdict-1),X(:,:,1:1:numdict-1));
     S_rec = Sh_rec + Sl;
     snr_rec(i) = snr(S,S_rec);
     psnr_rec(i) = psnr(S_rec,S);

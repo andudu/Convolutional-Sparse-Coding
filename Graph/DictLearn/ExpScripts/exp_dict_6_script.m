@@ -1,4 +1,4 @@
-% noise free all out carpet comparison
+% noise free all out carpet comparison for windowed graph
 
 global sporco_path;
 
@@ -15,7 +15,7 @@ D0 = double(D);
 
 
 % load the graph laplacian
-load([sporco_path,'/Graph/CacheData/Standard/Mat/CosineM1.mat']);
+load([sporco_path,'/Graph/CacheData/Lena_WindowKnearest_varn/Mat/CosineM2.mat']);
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%  First Batch  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -36,7 +36,7 @@ for i = 1:length(mu_all)
             lambda = lambda_all(j);
             mu = mu_all(i);
             [D1,X1, D2, X2 ] = exp_dict_4(D_init, S0, L, lambda, mu, maxit);
-            fname = ([sporco_path,'/Graph/CacheData/DictLenaCbpdnAll/DictComp',...
+            fname = ([sporco_path,'/Graph/CacheData/DictLenaCbpdnAll_Window/DictComp',...
                 num2str(i),num2str(j),num2str(k),'.mat']);
             save(fname,'D2','X2','lambda','D1','X1','mu','numdict');
         end

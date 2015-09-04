@@ -1,16 +1,16 @@
 % Graph Generation Script 1
 % Script for generating a series of graph from the Lena image
 % normalized Graph Laplacian
-% varing k in K-nearest neighbor graphs
+% varing k in Window K-nearest neighbor graphs
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%% Batch 1 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % % Standard Training images
 S0 = double(stdimage('lena.grey')) / 255;
-S0 = imresize(S0,.5);
+%S0 = imresize(S0,.5);
 
-tag1 = 'Lena_WindowKnearest_varn';
+tag1 = 'Lena512_WindowKnearest_varn';
 if ~exist([sporco_path,'/Graph/CacheData/',tag1],'dir')
     mkdir([sporco_path,'/Graph/CacheData/',tag1]);
 end

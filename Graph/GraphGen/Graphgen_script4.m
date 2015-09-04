@@ -8,9 +8,9 @@
 
 % % Standard Training images
 S0 = double(stdimage('lena.grey')) / 255;
-S0 = imresize(S0,.5);
+%S0 = imresize(S0,.5);
 
-tag1 = 'Lena_Knearest_vartau';
+tag1 = 'Lena512_Knearest_vartau';
 if ~exist([sporco_path,'/Graph/CacheData/',tag1],'dir')
     mkdir([sporco_path,'/Graph/CacheData/',tag1]);
 end
@@ -65,4 +65,4 @@ end
 
 %save data
 imsz = [size(S0,1),size(S0,2)];
-save([sporco_path,'/Graph/CacheData/',tag1,'/param.mat'],'lambda','imsz','psz','optl','nsz_all','tauc','taue');
+save([sporco_path,'/Graph/CacheData/',tag1,'/param.mat'],'lambda','imsz','psz','optl','tauc_all','taue_all');

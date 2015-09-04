@@ -277,7 +277,7 @@ if lf == 'm'
             o{i,j}.verbose = 0;
             o{i,j}.Y = [];
             o{i,j}.eta = 1.2;
-            o{i,j}.tol = opt.RelStopTol/10;
+            o{i,j}.tol = opt.RelStopTol/20;
         end
     end
 end

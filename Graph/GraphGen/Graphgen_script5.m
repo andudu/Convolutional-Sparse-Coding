@@ -65,4 +65,4 @@ end
 
 %save data
 imsz = [size(S0,1),size(S0,2)];
-save([sporco_path,'/Graph/CacheData/',tag1,'/param.mat'],'lambda','imsz','psz','optl','nsz_all','tauc','taue');
+save([sporco_path,'/Graph/CacheData/',tag1,'/param.mat'],'lambda','imsz','psz','optl','k_all','tauc','taue');
