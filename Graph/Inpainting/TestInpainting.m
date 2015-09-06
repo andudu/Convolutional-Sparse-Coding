@@ -2,11 +2,12 @@
 
 % script for testing 
 
+lambda_all = [0.01,0.005,.0025, 0.0001];
+mu_all = [.1, .05,.025]; 
+perc_noise = [.5,.6,.7];
+num_dict = [15,20,30];
 
-lambda = .01;
-mu = .1; 
-perc_noise = .6;
-maxiter = 150;
+maxiter = 400;
 
 clear D;
 % % Dict 1
@@ -69,12 +70,13 @@ end
 
 
 [Xnl,~] = cbpdnL_lasso(D,Sh,L,lambda,mu,opt);
-[Xcn,~] = cbpdn(D,Sh,lambda,opt); 
 Sh_rec_nl = scnv(D(:,:,1:1:numdict-1),Xnl(:,:,1:1:numdict-1));
 S_rec_nl = Sh_rec_nl + Sl;
 snr_rec= snr(S,S_rec_nl);
 psnr_rec = psnr(S_rec_nl,S);
 
+
+[Xcn,~] = cbpdn(D,Sh,lambda,opt); 
 Sh_rec_cn = scnv(D(:,:,1:1:numdict-1),Xcn(:,:,1:1:numdict-1));
 S_rec_cn = Sh_rec_cn + Sl;
 snr_rec_cn= snr(S,S_rec_cn);

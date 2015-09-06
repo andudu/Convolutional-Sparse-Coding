@@ -8,7 +8,7 @@
 
 load('Flicker1_512_split.mat');
 
-tag1 = 'Flicker_KNearest_Cosine';
+tag1 = 'Flicker_WindowKNearest_Cosine';
 if ~exist([sporco_path,'/Graph/CacheData/',tag1],'dir')
     mkdir([sporco_path,'/Graph/CacheData/',tag1]);
 end
@@ -36,12 +36,12 @@ for i = 1:100
     optl.Graph.Laplacian = 'n';
     optl.Graph.tau = tauc;
     optl.Graph.Metric = 'Cosine';
-    optl.Graph.GraphType = 'KNearest';
+    optl.Graph.GraphType = 'WindowKNearest';
     optl.SaveMem = 1;
-    optl.Graph.nsz = [];
+    optl.Graph.nsz = [12,12];
     optl.Graph.k = 30;
     
-    disp('generating Cosine graph');
+    disp('generating Window Cosine graph');
     [L,~] = laplacian_from_image(sh,optl);        
     if ~exist([sporco_path,'/Graph/CacheData/',tag1,'/Mat'],'dir')
         mkdir([sporco_path,'/Graph/CacheData/',tag1,'/Mat']);
@@ -54,4 +54,4 @@ end
 
 %save data
 imsz = [size(S0,1),size(S0,2)];
-save([sporco_path,'/Graph/CacheData/',tag1,'/param.mat'],'lambda','imsz','psz','optl','k_all','tauc','taue');
+save([sporco_path,'/Graph/CacheData/',tag1,'/param.mat'],'lambda','imsz','psz','optl','tauc');

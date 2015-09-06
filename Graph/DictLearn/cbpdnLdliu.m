@@ -268,6 +268,11 @@ end
 Gf = fft2(G, size(S,1), size(S,2));
 GSf = bsxfun(@times, conj(Gf), Sf);
 
+if ~isscalar(opt.LapWeight)
+    foo = reshape(opt.LapWeight,1,numel(opt.LapWeight)); 
+else
+    foo = opt.LapWeight;
+end
 
 if lf == 'm'
     o = cell(1,length(L)); %cell array of options for mini lasso
@@ -278,6 +283,7 @@ if lf == 'm'
             o{i,j}.Y = [];
             o{i,j}.eta = 1.2;
             o{i,j}.tol = opt.RelStopTol/20;
+            o{i,j}.l2w = foo;         
         end
     end
 end
@@ -710,6 +716,11 @@ function opt = defaultopts(opt)
   if ~isfield(opt,'L1Weight'),
     opt.L1Weight = 1;
   end
+  
+  if ~isfield(opt,'LapWeight'),
+    opt.LapWeight = 1;
+  end   
+  
   if ~isfield(opt,'Y0'),
     opt.Y0 = [];
   end

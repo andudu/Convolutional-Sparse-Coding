@@ -7,26 +7,6 @@ function [D1,X1, D2, X2 ] = exp_dict_4(D0, S0, L, lambda, mu, maxit)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%% Load the Data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%load([sporco_path,'Graph/CacheData/']);
-% global sporco_path;
-% % Standard Training images
-% S0 = zeros(512, 512, 5, 'single');
-% S0(:,:,1) = single(stdimage('lena.grey')) / 255;
-% S0(:,:,2) = single(stdimage('barbara.grey')) / 255;
-% S0(:,:,3) = single(stdimage('kiel.grey')) / 255;
-% S0(:,:,4) = single(rgb2gray(stdimage('mandrill'))) / 255;
-% tmp = single(stdimage('man.grey')) / 255;
-% S0(:,:,5) = tmp(101:612, 101:612);
-
-% % Reduce images size to speed up demo script
-% tmp = [];
-% kk = 1;
-% for k = imind,
-%   tmp(:,:,kk) = S0(:,:,k);
-%   kk = kk+1;
-% end
-% S0 = tmp;
-
 
 
 

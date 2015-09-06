@@ -195,8 +195,11 @@ else
 end
 
 o = cell(1,length(L)); %cell array of options for mini lasso
+
 if ~isscalar(opt.LapWeight)
     foo = reshape(opt.LapWeight,1,numel(opt.LapWeight)); 
+else
+    foo = opt.LapWeight;
 end
 
 for i = 1:length(L)
