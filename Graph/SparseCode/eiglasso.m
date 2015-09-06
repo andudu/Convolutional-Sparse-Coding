@@ -9,6 +9,7 @@ function [ Y_bar,V,JL] = eiglasso( phi, E, Z,lambda,mu, rho,opt)
 % Z: Load vector (m_k x n_k) x m
 % lambda, mu: penalty parameters
 % rho: stepsize for ADMM
+% l2w is the Laplacian weights
 
 
 if(~isempty(opt.Y_bar))

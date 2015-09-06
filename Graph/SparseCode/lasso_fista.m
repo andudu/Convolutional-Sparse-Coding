@@ -5,6 +5,7 @@ function [Y,el_out] = lasso_fista(L, Z, lambda,mu,rho, opt)
 % L is any matrix, preferably sparse
 % Z: Load vector (m_k x n_k) x m
 % lambda, mu, rho: penalty parameters
+% opt.l2w is the Laplacian weights
 
 if(~isempty(opt.Y))
     Y = opt.Y;
@@ -60,19 +61,21 @@ r = inf;
 
 while k < opt.MaxMainIter && r>opt.tol;
     linesrch = 1;
+    Y_scaled = bsxfun(@times, Y,opt.l2w); 
     Dyz = Y-Z;
     if (mod(k,lp) == 0)
-        Fy = .5*mu*trace(Y'*L*Y)+.5*rho*sum(Dyz(:).^2);
+        Fy = .5*mu*trace(Y'*L*Y_scaled)+.5*rho*sum(Dyz(:).^2);
     end
-    foo1 = mu*L*Y;
+    foo1 = mu*L*Y_scaled;
     foo2 = rho*Dyz;
     G = foo1+foo2;
     while linesrch,
         V = Y- 1/el*G;  %forward gradient step
         X = shrink(V, (lambda/el)*opt.L1Weight);
         if (mod(k,lp) == 0)
+            X_scaled = bsxfun(@times, X,opt.l2w); 
             Dxz = X-Z;
-            F = .5*mu*trace(X'*L*X)+ .5*rho*sum(Dxz(:).^2);
+            F = .5*mu*trace(X'*L*X_scaled)+ .5*rho*sum(Dxz(:).^2);
             Dxy = X - Y;
             Q =  Fy + Dxy(:)'*G(:) + (el/2)*sum(Dxy(:).^2);
             if F <= Q | el >= 1e5,

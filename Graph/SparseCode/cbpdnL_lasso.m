@@ -42,6 +42,8 @@ function [Y,U, optinf] = cbpdnL_lasso(D, S, L, lambda, mu, opt)
 %   RelStopTol       Relative convergence tolerance (see Sec. 3.3.1 of
 %                    boyd-2010-distributed)
 %   L1Weight         Weighting array for coefficients in l1 norm of X
+%   LapWeight        Weighting array along the direction of dictionaries
+%                       for the Laplacian term. 
 %   Y0               Initial value for Y
 %   U0               Initial value for U
 %   rho              ADMM penalty parameter
@@ -193,6 +195,10 @@ else
 end
 
 o = cell(1,length(L)); %cell array of options for mini lasso
+if ~isscalar(opt.LapWeight)
+    foo = reshape(opt.LapWeight,1,numel(opt.LapWeight)); 
+end
+
 for i = 1:length(L)
     o{i}.MaxMainIter = 10;
     o{i}.verbose = 0;
@@ -203,8 +209,18 @@ for i = 1:length(L)
     if lf == 'm'
         o{i}.Y = [];
         o{i}.eta = 1.2;
-        o{i}.tol = opt.RelStopTol/10;
-        %o{i}.verbose = 1;
+        o{i}.tol = opt.RelStopTol/10;    
+        o{i}.l2w = foo;
+        if ndims(opt.L1Weight == 3)
+            Ltemp = L{i};
+            I1 = Ltemp.ind1(1):Ltemp.ind2(1);
+            I2 = Ltemp.ind1(2):Ltemp.ind2(2);
+            o{i}.L1Weight = reshape(permute(opt.L1Weight(I1,I2,:),[2,1,3]),length(I1)*length(I2) ...
+                ,size(opt.L1Weight,3));
+        else
+            o{i}.L1Weight = opt.L1Weight; 
+        end
+          
     end
 end
 
@@ -380,6 +396,11 @@ function opt = defaultopts(opt)
   if ~isfield(opt,'L1Weight'),
     opt.L1Weight = 1;
   end
+  
+  if ~isfield(opt,'LapWeight'),
+    opt.LapWeight = 1;
+  end  
+  
   if ~isfield(opt,'Y0'),
     opt.Y0 = [];
   end
