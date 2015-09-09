@@ -18,17 +18,16 @@ D = double(D);
 
 
 % Cbpdn using a nice dictionary 
-lambda = 0.2;
+lambda = 0.02;
 opt = [];
 opt.Verbose = 1;
-opt.MaxMainIter = 200;
+opt.MaxMainIter = 300;
 opt.rho = 50*lambda + 0.5;
 opt.sigma = size(Sh,3);
 opt.AutoRho = 1;
 opt.AutoRhoPeriod = 10;
 opt.XRelaxParam = 1.5;
 opt.DRelaxParam = 1.5;
-opt.RelStopTol = 1e-4;
 [X1,~, optinf1] = cbpdn(D0,Sh, lambda,opt);
 
 
@@ -50,17 +49,10 @@ l1_dict = optinf2.itstat(:,4);
 figure; 
 l = min(length(fid_sc),length(fid_dict)); 
 plot(1:1:l, fid_sc(1:1:l), 'b',1:1:l, fid_dict(1:1:l), 'r'); 
-title(['Fidelity between Sparse coding and dict learning, lambda = ',num2str(lambda)]); 
-xlabel('iteration'); 
-legend('Sparse Code', 'Dict Learn'); 
+title('Fidelity between 
 
 
-figure; 
-l = min(length(fid_sc),length(fid_dict)); 
-plot(1:1:l, l1_sc(1:1:l), 'b',1:1:l, l1_dict(1:1:l), 'r'); 
-title(['L1 between Sparse coding and dict learning, lambda = ',num2str(lambda)]); 
-xlabel('iteration'); 
-legend('Sparse Code', 'Dict Learn'); 
+
 
 
 

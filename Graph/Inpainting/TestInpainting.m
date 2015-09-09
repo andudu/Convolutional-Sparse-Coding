@@ -2,19 +2,27 @@
 
 % script for testing 
 
-lambda_all = [0.01,0.005,.0025, 0.0001];
-mu_all = [.1, .05,.025]; 
-perc_noise = [.5,.6,.7];
-num_dict = [15,20,30];
+lambda = .005;
+mu = .1; 
+perc_noise = .5;
 
 maxiter = 400;
 
 clear D;
-% % Dict 1
-load('CacheData/Dict_12x12.mat');
+% % % Dict 1
+% load('CacheData/Dict_12x12.mat');
+% D = double(D);
+% D = D(:,:,1:15);
+% load ([sporco_path,'/Graph/CacheData/Lena_WindowKnearest_varn/Mat/CosineM4.mat']);
+
+
+
+% % Dict 3 The real dictionary
+% Load dictionary
+load([sporco_path '/Data/ConvDict.mat']);
+dmap = containers.Map(ConvDict.Label, ConvDict.Dict);
+D = dmap('12x12x36');
 D = double(D);
-D = D(:,:,1:15);
-load ([sporco_path,'/Graph/CacheData/Lena_WindowKnearest_varn/Mat/CosineM4.mat']);
 
 
 % % Dict 2
@@ -38,6 +46,7 @@ S = imresize(double(stdimage('lena.grey'))/255,.5);
 ind = [];
 ind(1,:) = randi(size(Sh,1),1,ceil(size(Sh,1)*size(Sh,2)*perc_noise));
 ind(2,:) = randi(size(Sh,2),1,ceil(size(Sh,1)*size(Sh,2)*perc_noise));
+
 for i = 1:size(ind,2)
     Sh(ind(1,i),ind(2,i)) = 0;
 end
