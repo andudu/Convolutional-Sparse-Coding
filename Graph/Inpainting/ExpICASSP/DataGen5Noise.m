@@ -3,9 +3,9 @@
 % load the image
 S0 = double(stdimage('lena.grey'))/255;
 
-noise_level = [.3,.4,.5,.6,.7];  %5 different noise levels
+noise_level = [.4,.5,.6,.65,.7,.75];   %5 different noise levels
 
-for i = 1: 5
+for i = 1: length(noise_level)
     
     perc_noise = noise_level(i) ;
     %generate missing pixels

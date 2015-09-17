@@ -15,8 +15,8 @@ D(:,:,2:end+1) = temp;
 
 
 % set parameters
-noise_level = [.4,.5,.6,.7,.75]; 
-mu1_all = [.5, 1,2];  % mu for the lower frequency
+noise_level = [.4,.5,.6,.65,.7,.75]; 
+mu1_all = [.5, 1];  % mu for the lower frequency
 lambda_all = [0.0025,0.005, 0.01, 0.02]; 
 
 
