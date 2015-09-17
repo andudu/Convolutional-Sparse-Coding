@@ -1,10 +1,13 @@
 % script for parameter search for regular dictionary learning
 
 
+% load the standard image
+s_ref = single(stdimage('lena.grey'))/255;
+
 % load the dictionary
 load([sporco_path '/Data/ConvDict.mat']);
 dmap = containers.Map(ConvDict.Label, ConvDict.Dict);
-D = dmap('12x12x64');
+D = dmap('12x12x36');
 temp = D;
 D(:,:,1) = zeros(12,12); 
 D(1,1,1) = 1; 
@@ -26,7 +29,7 @@ for i = 1:length(noise_level) %different noise level
     opt = [];
     
     opt.L1Weight = ones(size(S_c,1),size(S_c,2),size(D,3));
-    opt.L1Weight(:,:,size(D,3)) = 10*ones(size(S,1),size(S,2));
+    opt.L1Weight(:,:,1) = 10*ones(size(S_c,1),size(S_c,2));
     
     for t = 1:size(ind,2)
     opt.L1Weight(ind(1,t),ind(2,t),1) = 0;
@@ -35,6 +38,8 @@ for i = 1:length(noise_level) %different noise level
     for j = 1:length(mu1_all)
         mu1 = mu1_all(j);
         for k = 1:length(lambda_all)
+            
+            disp([num2str(i), num2str(j), num2str(k)]);
             
             lambda = lambda_all(k); 
             opt.Verbose = 1;
@@ -45,20 +50,20 @@ for i = 1:length(noise_level) %different noise level
             opt.AutoRhoPeriod = 1;
             opt.RhoRsdlTarget = 0.1;
             opt.RelaxParam = 1.8;
+           
             
-            opt.L1Weight = single(ones(size(sn,1), size(sn,2), size(D,3)));
-            opt.L1Weight(:,:,1) = 1e1*ms;
-            
-            [X, Z, optinf] = cbpdnlc(D, S_c, lambda, mu, opt);
+            [X, Z, ~] = cbpdnlc(D, S_c, lambda, mu1, opt);
             
             DX = ifft2(fft2(D, size(X,1), size(X,2)) .* fft2(X), 'symmetric');
             s1 = sum(DX(:,:,2:end), 3) + Z; %final reconstruction
             
-            psnr_all(i,j,k) = psnr(
+            psnr_all(i,j,k) = psnr(s1,s_ref);
+            ssim_all(i,j,k) = ssim(s1,s_ref);
+            disp(['psnr = ', num2str(psnr_all(i,j,k))]);
+            disp(['ssim = ', num2str(ssim_all(i,j,k))]); 
             
         end
     end
 end
 
-
-
+save('Results.mat','psnr_all','ssim_all', 'noise_level','mu1_all','lambda_all'); 
