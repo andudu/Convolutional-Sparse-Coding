@@ -21,7 +21,7 @@ clear D;
 % Load dictionary
 load([sporco_path '/Data/ConvDict.mat']);
 dmap = containers.Map(ConvDict.Label, ConvDict.Dict);
-D = dmap('12x12x36');
+D = dmap('12x12x64');
 D = double(D);
 
 
