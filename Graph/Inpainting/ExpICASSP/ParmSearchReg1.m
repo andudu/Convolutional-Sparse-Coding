@@ -2,7 +2,7 @@
 
 
 % load the standard image
-s_ref = single(stdimage('lena.grey'))/255;
+s_ref = imresize(single(stdimage('lena.grey'))/255.5);
 
 % load the dictionary
 load([sporco_path '/Data/ConvDict.mat']);
