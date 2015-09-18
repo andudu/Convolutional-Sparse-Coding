@@ -27,7 +27,7 @@ for i = 1:length(noise_level) %different noise level
     mu1 = mu1_best(i);
     lambda = lambda_best(i);
     
-    load(['CorImNoise',num2str(i),'.mat']);
+    load(['CorImNoise256',num2str(i),'.mat']);
     
     opt = [];
     opt.L1Weight = ones(size(S_c,1),size(S_c,2),size(D,3));
