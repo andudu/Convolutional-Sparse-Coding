@@ -44,9 +44,9 @@ for i = 1:size(S0,3)
     optl.Graph.Laplacian = 'n';
     optl.Graph.tau = tauc;
     optl.Graph.Metric = 'Cosine';
-    optl.Graph.GraphType = 'KNearest';
+    optl.Graph.GraphType = 'WindowKNearest';
     optl.SaveMem = 1;
-    optl.Graph.nsz = 14;
+    optl.Graph.nsz = [12,12];
     optl.Graph.k = 30;
     
     [L,~] = laplacian_from_image(Sh,optl); 
