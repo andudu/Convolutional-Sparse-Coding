@@ -21,6 +21,7 @@ for i = 1:length(noise_level)
 
         load(['CorImNoise256',num2str(i),'.mat']);
         mu1 = mu1_best(i);
+        lambda = lambda_best(i);
         % load Laplacian
         load([sporco_path,'/Graph/CacheData/Lena256_Knearest_Ip/Mat/CosineM',num2str(i),'.mat']);
         
