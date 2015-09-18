@@ -1,10 +1,17 @@
 % find a good set of 6 images to learn a nice dictionary
 
 % load the image
-ind = [5,16,25,38,46];
+ind = [5,16,25,38,46,52];
 load('FlickrCC_512_512.mat');
+S0 = []; 
 S0 = S(:,:,ind); 
 S0 = single(S0)/255;
+temp = [];
+for i = 1:size(S0,3)
+    temp(:,:,i) = imresize(S0(:,:,i),.5);
+end
+S0 = temp;
+    
 clear S; 
 
 
@@ -39,6 +46,8 @@ opt.DRelaxParam = 1.6;
 
 % Display learned dictionary
 figure;
-imdisp(tiledict(D));
+o.grey = 1;
+square_plot(D,o); 
+demo_testIp
 
 

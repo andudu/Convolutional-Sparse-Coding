@@ -4,16 +4,16 @@
 
 % Params
 lambda = .01;
-mu1 = .75;
+mu1 = .5;
 mu2 = .1; 
-perc_noise = .55;
+% perc_noise = .55;
 
 clear D;
 
-
+load('CorImNoise2562.mat');
 
 % load Laplacian
-load([sporco_path,'/Graph/CacheData/Lena512_Knearest_vark/Mat/CosineM3.mat']);
+load([sporco_path,'/Graph/CacheData/Lena256_Knearest_Ip/Lena256_Knearest_Ip/Mat/CosineM2.mat']);
 
 % % Dict 3 The real dictionary
 % Load dictionary
@@ -28,19 +28,8 @@ D(:,:,2:end+1) = temp;
 numdict = size(D,3);
 
 % load image
-S = double(stdimage('lena.grey'))/255;
-S_ref = S;
-
-
-%generate missing pixels
-ind = [];
-ind(1,:) = randi(size(S,1),1,ceil(size(S,1)*size(S,2)*perc_noise));
-ind(2,:) = randi(size(S,2),1,ceil(size(S,1)*size(S,2)*perc_noise));
-
-for i = 1:size(ind,2)
-    S(ind(1,i),ind(2,i)) = 0;
-end
-
+S_ref = imresize(double(stdimage('lena.grey'))/255,.5);
+S = S_c;
 
 
 
@@ -55,7 +44,7 @@ for t = 1:size(ind,2)
     opt.L1Weight(ind(1,t),ind(2,t),1) = 0;
 end
 opt.Verbose = 1;
-opt.MaxMainIter = 200;
+opt.MaxMainIter = 500;
 opt.RelStopTol = 1e-3;
 opt.rho = 50*lambda + 1;
 opt.AutoRho = 1;
@@ -68,10 +57,10 @@ scnv = @(d,x) ifft2(sum(bsxfun(@times, fft2(d, size(x,1), size(x,2)), ...
     fft2(x)),3), 'symmetric');
 
 
-[Xnl,Znl,~] = cLbpdnlc(D,S,L,lambda,mu1,mu2,opt);
-Sh_rec_nl = scnv(D(:,:,2:end),Xnl(:,:,2:end));
-S_rec_nl = Sh_rec_nl + Znl;
-psnr_rec = psnr(S_rec_nl,S_ref);
+% [Xnl,Znl,~] = cLbpdnlc(D,S,L,lambda,mu1,mu2,opt);
+% Sh_rec_nl = scnv(D(:,:,2:end),Xnl(:,:,2:end));
+% S_rec_nl = Sh_rec_nl + Znl;
+% psnr_rec = psnr(S_rec_nl,S_ref);
 
 
 [Xcn,Zcn,~] = cbpdnlc(D,S,lambda,mu1,opt); 
@@ -81,13 +70,13 @@ psnr_rec_cn = psnr(S_rec_cn,S_ref);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% Plotting %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-figure; 
-imagesc(S_rec_nl); 
-title(['psnr nl = ',num2str(psnr_rec)]);
-
-figure; 
-imagesc(Sh_rec_nl); 
-title('high freq nl'); 
+% figure; 
+% imagesc(S_rec_nl); 
+% title(['psnr nl = ',num2str(psnr_rec)]);
+% 
+% figure; 
+% imagesc(Sh_rec_nl); 
+% title('high freq nl'); 
 
 
 figure; 
