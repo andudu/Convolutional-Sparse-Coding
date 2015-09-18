@@ -14,17 +14,12 @@ D(1,1,1) = 1;
 D(:,:,2:end+1) = temp; 
 
 
-% % set parameters
-% noise_level = [.4,.5,.6,.65,.7,.75]; 
-% mu1_best = [];  % mu1 for the lower frequency
-% lambda_best = []; 
-% maxiter = 500;
+% set parameters
+noise_level = [.4,.5,.6,.65,.7,.75]; 
+mu1_best = [.5,.5,.5,.5,.5,.5];  % mu1 for the lower frequency
+lambda_best = [.01,.01,.01,.01,.02,.02]; 
+maxiter = 500;
 
-% Toy Params
-maxiter = 400;
-noise_level = [.4]; 
-mu1_best = .75;
-lambda_best = .005;
 
 
 for i = 1:length(noise_level) %different noise level
@@ -66,7 +61,7 @@ for i = 1:length(noise_level) %different noise level
     
     tauc = 1;
     
-    tag1 = 'Lena_Knearest_IpToy';
+    tag1 = 'Lena_Knearest_Ip';
     if ~exist([sporco_path,'/Graph/CacheData/',tag1],'dir')
         mkdir([sporco_path,'/Graph/CacheData/',tag1]);
     end
@@ -85,7 +80,7 @@ for i = 1:length(noise_level) %different noise level
     optl.Graph.GraphType = 'KNearest';
     optl.SaveMem = 1;
     optl.Graph.nsz = [];
-    optl.Graph.k = 35;
+    optl.Graph.k = 30;
     
     [L,~] = laplacian_from_image(Sh,optl); 
     
