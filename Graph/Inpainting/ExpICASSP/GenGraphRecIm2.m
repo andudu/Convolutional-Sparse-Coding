@@ -1,7 +1,7 @@
 % Generate some graphs from some reconstructed images
 
 % load the standard image
-s_ref = imresize(double(stdimage('lena.grey')/255),.5);
+s_ref = imresize(double(stdimage('lena.grey'))/255,.5);
 
 % load the dictionary
 load([sporco_path '/Data/ConvDict.mat']);
@@ -16,7 +16,7 @@ D(:,:,2:end+1) = temp;
 
 % set parameters
 noise_level = [.4,.5,.6,.65,.7,.75]; 
-mu1_best = [.75,.75,.75,.75,.75,.75];  % mu1 for the lower frequency
+mu1_best = [.5,.5,.5,.5,.5,.5];  % mu1 for the lower frequency
 lambda_best = [.005,.01,.01,.01,.02,.02]; 
 maxiter = 500;
 
