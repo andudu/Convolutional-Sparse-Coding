@@ -1,7 +1,7 @@
 % find a good set of 6 images to learn a nice dictionary
 
 % load the image
-ind = [5,16,25,38,46,52];
+ind = [1,5,16,20,23,25,38,46,52];
 load('FlickrCC_512_512.mat');
 S0 = []; 
 S0 = S(:,:,ind); 
@@ -9,7 +9,7 @@ S0 = single(S0)/255;
 temp = [];
 for i = 1:size(S0,3)
     temp(:,:,i) = imresize(S0(:,:,i),.5);
-    temp(:,:,i) = temp(:,:,i) + .04*randn(size(temp(:,:,i)));% add a little noise
+    temp(:,:,i) = temp(:,:,i) + .05*randn(size(temp(:,:,i)));% add a little noise
 end
 S0 = temp;
     
