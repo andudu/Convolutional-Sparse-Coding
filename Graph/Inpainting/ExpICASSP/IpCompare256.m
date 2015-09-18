@@ -61,6 +61,13 @@ for i = 1:length(noise_level)
         scnv = @(d,x) ifft2(sum(bsxfun(@times, fft2(d, size(x,1), size(x,2)), ...
             fft2(x)),3), 'symmetric');
         
+        [Xcn,Zcn,~] = cbpdnlc(D,S,lambda,mu1,opt);
+        Sh_rec_cn = scnv(D(:,:,2:end),Xcn(:,:,2:end));
+        S_rec_cn = Sh_rec_cn + Zcn;
+        psnr_rec_cn = psnr(S_rec_cn,S_ref);
+        psnr_all_cn(i) = psnr_rec_cn;
+        disp(['psnr for conv = ',num2str(psnr_rec_cn)]);
+        
         for j = 1:length(mu2_all)
             mu2 = mu2_all(j);
             [Xnl,Znl,~] = cLbpdnlc(D,S,L,lambda,mu1,mu2,opt);
@@ -68,14 +75,10 @@ for i = 1:length(noise_level)
             S_rec_nl = Sh_rec_nl + Znl;
             psnr_rec_nl = psnr(S_rec_nl,S_ref);
             psnr_all_nl(i,j) = psnr_rec_nl;
+            disp(['psnr for nl = ',num2str(psnr_rec_nl)]);
         end
         
         
-        [Xcn,Zcn,~] = cbpdnlc(D,S,lambda,mu1,opt);
-        Sh_rec_cn = scnv(D(:,:,2:end),Xcn(:,:,2:end));
-        S_rec_cn = Sh_rec_cn + Zcn;
-        psnr_rec_cn = psnr(S_rec_cn,S_ref);
-        psnr_all_cn(i) = psnr_rec_cn;
          
 end
 
