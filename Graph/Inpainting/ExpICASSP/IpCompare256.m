@@ -22,7 +22,7 @@ for i = 1:length(noise_level)
         load(['CorImNoise256',num2str(i),'.mat']);
         mu1 = mu1_best(i);
         % load Laplacian
-        load([sporco_path,'/Graph/CacheData/Lena256_Knearest_Ip/Lena256_Knearest_Ip/Mat/CosineM',num2str(i),'.mat']);
+        load([sporco_path,'/Graph/CacheData/Lena256_Knearest_Ip/Mat/CosineM',num2str(i),'.mat']);
         
         % % Dict 3 The real dictionary
         % Load dictionary
