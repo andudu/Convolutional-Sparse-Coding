@@ -3,17 +3,17 @@
 % script for testing 
 
 % Params
-lambda = .005;
+lambda = .01;
 mu1 = .75;
 mu2 = .1; 
-perc_noise = .5;
+perc_noise = .55;
 
 clear D;
 
 
 
 % load Laplacian
-load([sporco_path,'/Graph/CacheData/Lena_Knearest_vark/Mat/CosineM3.mat']);
+load([sporco_path,'/Graph/CacheData/Lena512_Knearest_vark/Mat/CosineM3.mat']);
 
 % % Dict 3 The real dictionary
 % Load dictionary
