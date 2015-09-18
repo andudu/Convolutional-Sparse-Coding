@@ -1,15 +1,18 @@
 % find a good set of 6 images to learn a nice dictionary
 
 % load the image
+imnum = 4; 
 ind = [1,5,16,20,23,25,38,46,52];
+ind = ind(1:imnum); 
 load('FlickrCC_512_512.mat');
 S0 = []; 
 S0 = S(:,:,ind); 
 S0 = single(S0)/255;
 temp = [];
+sigma = 0.05;
 for i = 1:size(S0,3)
     temp(:,:,i) = imresize(S0(:,:,i),.5);
-    temp(:,:,i) = temp(:,:,i) + .05*randn(size(temp(:,:,i)));% add a little noise
+    temp(:,:,i) = temp(:,:,i) + sigma*randn(size(temp(:,:,i)));% add a little noise
 end
 S0 = temp;
     
@@ -31,7 +34,7 @@ D0(4:9,4:9,:) = single(randn(6,6,numdict));
 lambda = 0.3;
 opt = [];
 opt.Verbose = 1;
-opt.MaxMainIter = 150;
+opt.MaxMainIter = 100;
 opt.rho = 50*lambda + 0.5;
 opt.sigma = size(Sh,3);
 opt.AutoRho = 1;
@@ -46,7 +49,6 @@ opt.DRelaxParam = 1.6;
 
 
 % Display learned dictionary
-figure;
 o.grey = 1;
 square_plot(D,o); 
 demo_testIp
