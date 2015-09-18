@@ -9,6 +9,7 @@ S0 = single(S0)/255;
 temp = [];
 for i = 1:size(S0,3)
     temp(:,:,i) = imresize(S0(:,:,i),.5);
+    temp(:,:,i) = temp(:,:,i) + .04*randn(size(temp(:,:,i)));% add a little noise
 end
 S0 = temp;
     
@@ -27,10 +28,10 @@ D0(4:9,4:9,:) = single(randn(6,6,numdict));
 
 
 % Set up cbpdndliu parameters
-lambda = 0.2;
+lambda = 0.3;
 opt = [];
 opt.Verbose = 1;
-opt.MaxMainIter = 100;
+opt.MaxMainIter = 150;
 opt.rho = 50*lambda + 0.5;
 opt.sigma = size(Sh,3);
 opt.AutoRho = 1;
