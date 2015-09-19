@@ -45,14 +45,11 @@ D = double(D);
 D0 = D(:,:,1:1:25); %top 25 dictionaries
 
 
-% load the graph laplacian
-load([sporco_path,'/Graph/CacheData/Standard/Mat/CosineM1.mat']);
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%  First Batch  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 lambda_all = [.2,.25,.3,.35];
-mu_all = [.2,.3,.4];
+mu_all = [.2,.25,.3,.4];
 maxit = 350;
 
 
@@ -97,9 +94,9 @@ for i = 1:length(lambda_all)
         opt.XRelaxParam = 1.5;
         opt.DRelaxParam = 1.5;
         disp([num2str(i), ',', num2str(j)]);
-        mu = mu_all(i);
-        [D2, X2 ] = cbpdnLdliu(D0, Sh,L, lambda,mu, opt);
-        save([sporco_path,'/Graph/CacheData/',tag1, '/','LaplacianDict',num2str(i),num2str(j),'.mat'],'D1','X1','lambda','mu');  
+        mu = mu_all(j);
+        [D2, X2,~ ] = cbpdnLdliu(D0, Sh,L,mu,lambda, opt);
+        save([sporco_path,'/Graph/CacheData/',tag1, '/','LaplacianDict',num2str(i),num2str(j),'.mat'],'D2','X2','lambda','mu');  
     end
 end
 
