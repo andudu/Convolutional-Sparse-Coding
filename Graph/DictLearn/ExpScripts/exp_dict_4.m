@@ -55,7 +55,7 @@ opt2.DRelaxParam = 1.5;
 
 %%%%%%%%%%%%%%%%%%%%%%%% Dictionary Learning %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-[D1, X1, ~] = cbpdnLdliu(D0, Sh,L, lambda,mu, opt1);
+[D1, X1, ~] = cbpdnLdliu(D0, Sh,L, mu,lambda, opt1);
 [D2, X2, ~] = cbpdndliu(D0, Sh, lambda, opt2);
 
 end

@@ -24,6 +24,7 @@ npd = 16;
 fltlmbd = 4;
 [Sl, Sh] = lowpass(S0, fltlmbd, npd);
 
+
 % Construct initial dictionary
 numdict = 25;
 D0 = zeros(12,12,numdict, 'single');
