@@ -95,7 +95,7 @@ for i = 1:length(lambda_all)
         opt.XRelaxParam = 1.5;
         opt.DRelaxParam = 1.5;
         disp([num2str(i), ',', num2str(j)]);
-        mu = mu_all(i);
+        mu = mu_all(j);
         [D2, X2,~ ] = cbpdnLdliu(D0, Sh,L, mu,lambda, opt); %mu lambda!
         save([sporco_path,'/Graph/CacheData/',tag1, '/','LaplacianDict',num2str(i),num2str(j),'.mat'],'D2','X2','lambda','mu');  
     end
