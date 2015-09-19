@@ -50,7 +50,7 @@ D0 = D(:,:,1:1:25); %top 25 dictionaries
 
 lambda_all = [.2,.25,.3,.35];
 mu_all = [.2,.3,.4];
-maxit = 5;
+maxit = 350;
 
 
 
