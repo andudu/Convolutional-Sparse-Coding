@@ -7,7 +7,7 @@ s_ref = single(stdimage('lena.grey'))/255;
 % load the dictionary
 load([sporco_path '/Data/ConvDict.mat']);
 dmap = containers.Map(ConvDict.Label, ConvDict.Dict);
-D = dmap('12x12x36');
+D = dmap('12x12x64');
 temp = D;
 D(:,:,1) = zeros(12,12); 
 D(1,1,1) = 1; 
@@ -16,12 +16,11 @@ D(:,:,2:end+1) = temp;
 
 % set parameters
 noise_level = [.4,.5,.6,.65,.7,.75]; 
-mu1_all = [.5, 1];  % mu for the lower frequency
-lambda_all = [0.0025,0.005, 0.01, 0.02]; 
+mu1_all = [.5,.75,1];  % mu for the lower frequency
+lambda_all = [0.006, 0.008, 0.01,0.012,0.014, 0.0016]; 
 
 
 psnr_all = []; 
-ssim_all = []; 
 
 
 for i = 1:length(noise_level) %different noise level
@@ -58,12 +57,10 @@ for i = 1:length(noise_level) %different noise level
             s1 = sum(DX(:,:,2:end), 3) + Z; %final reconstruction
             
             psnr_all(i,j,k) = psnr(s1,s_ref);
-            ssim_all(i,j,k) = ssim(s1,s_ref);
             disp(['psnr = ', num2str(psnr_all(i,j,k))]);
-            disp(['ssim = ', num2str(ssim_all(i,j,k))]); 
             
         end
     end
 end
 
-save('Results.mat','psnr_all','ssim_all', 'noise_level','mu1_all','lambda_all'); 
+save('Results512_64.mat','psnr_all', 'noise_level','mu1_all','lambda_all'); 
