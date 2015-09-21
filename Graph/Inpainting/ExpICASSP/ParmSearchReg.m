@@ -23,7 +23,7 @@ lambda_all = [0.006, 0.008, 0.01,0.012,0.014, 0.0016];
 psnr_all = []; 
 
 
-for i = 1:length(noise_level) %different noise level
+for i = 4:length(noise_level) %different noise level
     load(['CorImNoise',num2str(i),'.mat']);
     opt = [];
     
