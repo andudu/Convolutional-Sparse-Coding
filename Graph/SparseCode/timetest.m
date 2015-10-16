@@ -24,7 +24,7 @@ cbpdn_time = [];
 lambda = .04; 
 mu = .03; 
 opt.Verbose = 0;
-opt.MaxMainIter = 4;
+opt.MaxMainIter = 400;
 opt.rho = 100*lambda + 1;
 opt.RelStopTol = 1e-3;
 opt.AuxVarObj = 0;
@@ -33,26 +33,26 @@ opt.AutoRhoPeriod = 10;
 
 
 
-% %lasso-eig
-% for i = 1:4
-%     %load the eigenvectors
-%     opt.Lformat = 'Eig';
-%     load(strcat(sporco_path,'/Graph/CacheData/Lena_timetest/Eig',num2str(i),'.mat'),'L','numeig');
-%     tic;
-%     [Xnl,~] = cbpdnL_lasso(D,Sh,L,lambda,mu,opt);
-%     eig_time(i,1) = toc;
-% end
+%lasso-eig
+for i = 1:4
+    %load the eigenvectors
+    opt.Lformat = 'Eig';
+    load(strcat(sporco_path,'/Graph/CacheData/Lena_timetest/Eig',num2str(i),'.mat'),'L','numeig');
+    tic;
+    [Xnl,~] = cbpdnL_lasso(D,Sh,L,lambda,mu,opt);
+    eig_time(i,1) = toc;
+end
 
 
-% %admm-eig 
-% for i = 1:4
-%     %load the eigenvectors
-%     opt.Lformat = 'Eig'; 
-%     load(strcat(sporco_path,'/Graph/CacheData/Lena_timetest/Eig',num2str(i),'.mat'));     
-%     tic; 
-%     [Xnl,~] = cbpdnL_split(D,Sh,L,lambda,mu,opt);
-%     eig_time(i,2) = toc;
-% end
+%admm-eig 
+for i = 1:4
+    %load the eigenvectors
+    opt.Lformat = 'Eig'; 
+    load(strcat(sporco_path,'/Graph/CacheData/Lena_timetest/Eig',num2str(i),'.mat'));     
+    tic; 
+    [Xnl,~] = cbpdnL_split(D,Sh,L,lambda,mu,opt);
+    eig_time(i,2) = toc;
+end
 
 %lasso-Full
 for i = 1:4
