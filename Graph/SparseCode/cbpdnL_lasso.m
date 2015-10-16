@@ -214,7 +214,7 @@ for i = 1:length(L)
         o{i}.eta = 1.2;
         o{i}.tol = opt.RelStopTol/10;    
         o{i}.l2w = foo;
-        if ndims(opt.L1Weight == 3)
+        if ndims(opt.L1Weight) == 3
             Ltemp = L{i};
             I1 = Ltemp.ind1(1):Ltemp.ind2(1);
             I2 = Ltemp.ind1(2):Ltemp.ind2(2);
@@ -228,7 +228,7 @@ for i = 1:length(L)
 end
 
 
-while k <= opt.MaxMainIter & (r > epri | s > edua),
+while k <= opt.MaxMainIter %& (r > epri | s > edua),
 
   % Solve X subproblem
   Xf = solvedbi_sm(Df, rho, DSf + rho*fft2(Y - U), C);
